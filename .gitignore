@@ -5,3 +5,6 @@
 
 #资源文件
 Test/resources/
+
+# 编译后的Python文件
+Test/__pycache__/
