@@ -8,3 +8,6 @@ Test/resources/
 
 # 编译后的Python文件
 Test/__pycache__/
+
+#不上传AGENT.md
+AGENT.md

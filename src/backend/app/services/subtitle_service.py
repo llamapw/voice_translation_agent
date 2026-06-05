@@ -21,7 +21,8 @@ class SubtitleService:
 
     def write_srt(self, cues: List[SubtitleCue], path: Path) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(cues_to_srt(cues), encoding="utf-8")
+        with path.open("w", encoding="utf-8", newline="\n") as file:
+            file.write(cues_to_srt(cues))
         return path
 
 
