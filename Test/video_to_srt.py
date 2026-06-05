@@ -293,17 +293,68 @@ def format_srt_time(seconds):
     return f"{hours:02}:{minutes:02}:{secs:02},{milliseconds:03}"
 
 
-def write_srt(items, output_path):
+def normalize_srt_text(text):
+    return "\n".join(
+        line.strip()
+        for line in str(text or "").splitlines()
+        if line.strip()
+    )
+
+
+def build_srt_text(item, subtitle_mode):
+    if subtitle_mode == "bilingual":
+        source_text = normalize_srt_text(item.get("source_text") or item.get("text"))
+        target_text = normalize_srt_text(item.get("target_text"))
+        parts = []
+        if source_text:
+            parts.append(source_text)
+        if target_text and target_text != source_text:
+            parts.append(target_text)
+        return "\n".join(parts)
+
+    return normalize_srt_text(item["text"])
+
+
+def write_srt(items, output_path, subtitle_mode="single"):
     lines = []
     for index, item in enumerate(items, start=1):
         lines.append(str(index))
         lines.append(
             f"{format_srt_time(item['start'])} --> {format_srt_time(item['end'])}"
         )
-        lines.append(item["text"])
+        lines.append(build_srt_text(item, subtitle_mode))
         lines.append("")
 
     pathlib.Path(output_path).write_text("\n".join(lines), encoding="utf-8")
+
+
+def enrich_subtitles_with_llm(subtitles, correct, translate_to, llm_model, subtitle_mode):
+    if subtitle_mode == "bilingual" and not translate_to:
+        raise ValueError("双语 SRT 需要同时指定 --translate-to，例如 --translate-to zh")
+
+    for item in subtitles:
+        source_text = item["text"]
+        item["source_text"] = source_text
+
+        if not source_text or not (correct or translate_to):
+            continue
+
+        if subtitle_mode == "bilingual":
+            if correct:
+                item["source_text"] = polish_subtitle_text(
+                    source_text,
+                    llm_model,
+                    None,
+                )
+            item["target_text"] = polish_subtitle_text(
+                source_text,
+                llm_model,
+                translate_to,
+            )
+            item["text"] = item["target_text"]
+            continue
+
+        item["text"] = polish_subtitle_text(source_text, llm_model, translate_to)
 
 
 def build_output_path(media_path, output_path):
@@ -319,6 +370,7 @@ def media_to_srt(
     correct,
     translate_to,
     llm_model,
+    subtitle_mode,
 ):
     media_path = pathlib.Path(media_path).expanduser().resolve()
     if not media_path.exists():
@@ -340,11 +392,15 @@ def media_to_srt(
     if not subtitles:
         raise RuntimeError("Fun-ASR 未返回可写入 SRT 的句子时间戳")
 
-    for item in subtitles:
-        if item["text"] and (correct or translate_to):
-            item["text"] = polish_subtitle_text(item["text"], llm_model, translate_to)
+    enrich_subtitles_with_llm(
+        subtitles,
+        correct=correct,
+        translate_to=translate_to,
+        llm_model=llm_model,
+        subtitle_mode=subtitle_mode,
+    )
 
-    write_srt(subtitles, output_path)
+    write_srt(subtitles, output_path, subtitle_mode=subtitle_mode)
     return output_path
 
 
@@ -372,6 +428,15 @@ def parse_args():
         help="将字幕翻译为目标语言，例如 zh、en、ja。不传则不翻译",
     )
     parser.add_argument(
+        "--subtitle-mode",
+        choices=["single", "bilingual"],
+        default="single",
+        help=(
+            "SRT 文本模式。single 保持一条字幕一种文本；"
+            "bilingual 在同一条字幕中写入原文和译文，需要同时指定 --translate-to"
+        ),
+    )
+    parser.add_argument(
         "--llm-model",
         help="纠错大模型名称，默认读取 LLM_MODEL 或使用 qwen-turbo",
     )
@@ -392,6 +457,7 @@ def main():
         correct=args.correct,
         translate_to=args.translate_to,
         llm_model=llm_model,
+        subtitle_mode=args.subtitle_mode,
     )
     print(f"SRT 文件已生成: {output_path}")
 
