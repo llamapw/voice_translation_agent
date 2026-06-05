@@ -7,6 +7,7 @@ from app.api.routes_jobs import create_jobs_router
 from app.api.routes_subtitles import create_subtitles_router
 from app.services.job_service import job_service
 from app.services.media_service import media_service
+from app.services.subtitle_service import subtitle_service
 
 
 def create_app(storage_root: Optional[Path] = None) -> FastAPI:
@@ -15,6 +16,7 @@ def create_app(storage_root: Optional[Path] = None) -> FastAPI:
         create_jobs_router(
             job_service=job_service,
             media_service=media_service,
+            subtitle_service=subtitle_service,
             storage_root=storage_root,
         ),
         prefix="/api/jobs",

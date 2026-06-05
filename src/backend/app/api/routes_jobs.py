@@ -1,18 +1,21 @@
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
 from app.core.paths import build_job_paths, get_default_storage_root
 from app.models.job import JobCreateOptions, JobRead
 from app.services.job_service import JobNotFoundError, JobService, job_service
 from app.services.media_service import MediaService, media_service
+from app.services.subtitle_service import SubtitleService, subtitle_service
+from app.workers.subtitle_worker import run_mock_subtitle_job
 
 
 def create_jobs_router(
     job_service: JobService,
     media_service: MediaService,
+    subtitle_service: SubtitleService,
     storage_root: Optional[Path] = None,
 ) -> APIRouter:
     router = APIRouter()
@@ -20,6 +23,7 @@ def create_jobs_router(
 
     @router.post("", response_model=JobRead)
     def create_job(
+        background_tasks: BackgroundTasks,
         file: UploadFile = File(...),
         source_language: str = Form("en"),
         target_language: str = Form("zh"),
@@ -48,6 +52,13 @@ def create_jobs_router(
             input_extension=input_extension,
         )
         media_service.save_binary_file(file.file, paths.input_video)
+        background_tasks.add_task(
+            run_mock_subtitle_job,
+            job.id,
+            paths,
+            job_service,
+            subtitle_service,
+        )
         return job
 
     @router.get("/{job_id}", response_model=JobRead)
@@ -77,4 +88,8 @@ def create_jobs_router(
     return router
 
 
-router = create_jobs_router(job_service=job_service, media_service=media_service)
+router = create_jobs_router(
+    job_service=job_service,
+    media_service=media_service,
+    subtitle_service=subtitle_service,
+)

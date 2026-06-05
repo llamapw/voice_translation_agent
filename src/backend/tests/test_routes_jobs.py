@@ -3,8 +3,10 @@ from fastapi.testclient import TestClient
 
 from app.api.routes_jobs import create_jobs_router
 from app.core.paths import build_job_paths
+from app.models.job import JobStatus
 from app.services.media_service import MediaService
 from app.services.job_service import JobService
+from app.services.subtitle_service import SubtitleService
 
 
 def build_test_client(storage_root=None) -> TestClient:
@@ -14,6 +16,7 @@ def build_test_client(storage_root=None) -> TestClient:
         create_jobs_router(
             job_service=service,
             media_service=MediaService(),
+            subtitle_service=SubtitleService(),
             storage_root=storage_root,
         ),
         prefix="/api/jobs",
@@ -58,6 +61,25 @@ def test_create_job_saves_uploaded_video_to_job_storage(tmp_path):
     assert response.status_code == 200
     assert payload["input_extension"] == ".webm"
     assert paths.input_video.read_bytes() == b"fake video"
+
+
+def test_create_job_runs_mock_subtitle_job_after_response(tmp_path):
+    client = build_test_client(storage_root=tmp_path)
+
+    response = client.post(
+        "/api/jobs",
+        files={"file": ("meeting.mp4", b"fake video", "video/mp4")},
+    )
+
+    created = response.json()
+    paths = build_job_paths(created["id"], storage_root=tmp_path)
+    fetched = client.get("/api/jobs/{0}".format(created["id"])).json()
+    assert response.status_code == 200
+    assert created["status"] == JobStatus.pending
+    assert fetched["status"] == JobStatus.done
+    assert fetched["progress"] == 100
+    assert paths.subtitles_json.exists()
+    assert paths.output_srt.exists()
 
 
 def test_read_job_video_returns_uploaded_video_file(tmp_path):
