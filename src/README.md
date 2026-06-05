@@ -91,3 +91,59 @@ src/
 7. 从 `Test/subtitle_viewer_app.py` 迁移字幕展示、当前字幕联动和字幕列表交互思路。
 
 每个阶段应保持一个清晰、可验证的提交目标。
+
+## 分步文件职责
+
+### 1. `backend/requirements.txt`
+
+记录后端运行所需的 Python 依赖。
+
+第一阶段只放 FastAPI 最小后端需要的依赖，包括 Web 框架、ASGI 服务、表单上传支持和配置读取支持。真实 ASR、LLM、ffmpeg 相关依赖后续迁移到对应功能时再添加。
+
+### 2. `backend/app/main.py`
+
+FastAPI 后端应用入口。
+
+后续会在这里创建 FastAPI 应用实例，注册 CORS、挂载 API 路由，并提供最小健康检查或启动验证能力。
+
+### 3. `backend/app/core/config.py`
+
+统一管理运行配置。
+
+后续会负责读取 `.env`、模型名称、API Key、默认语言、CORS 来源、运行环境等配置，避免业务代码直接读取环境变量。
+
+### 4. `backend/app/core/paths.py`
+
+统一管理本地文件路径。
+
+后续会负责生成上传视频、临时音频、字幕 JSON、SRT 输出等路径，保证所有任务文件都落在 `storage/jobs/{job_id}/` 之下。
+
+### 5. `backend/app/models/job.py`
+
+定义字幕生成任务的数据结构。
+
+后续会包含任务 ID、任务状态、进度、提示信息、错误信息、源语言、目标语言、视频地址、字幕地址和 SRT 下载地址。
+
+### 6. `backend/app/models/subtitle.py`
+
+定义字幕条目的数据结构。
+
+后续会包含字幕序号、开始时间、结束时间、原文、译文和前端展示文本。
+
+### 7. 任务接口和服务层
+
+任务接口主要包含：
+
+- `backend/app/api/routes_jobs.py`：上传视频、创建任务、查询任务状态、预览视频。
+- `backend/app/api/routes_subtitles.py`：获取结构化字幕、下载 SRT 文件。
+
+服务层主要包含：
+
+- `backend/app/services/job_service.py`：维护内存任务表，创建任务，更新状态和错误。
+- `backend/app/services/media_service.py`：处理视频到音频的转换。
+- `backend/app/services/asr_service.py`：封装 ASR 识别。
+- `backend/app/services/llm_service.py`：封装字幕校对和翻译。
+- `backend/app/services/subtitle_service.py`：生成字幕 JSON、SRT 或其他字幕格式。
+- `backend/app/workers/subtitle_worker.py`：串联完整后台处理流程。
+- `backend/app/utils/ffmpeg.py`：封装 ffmpeg 路径解析和命令执行。
+- `backend/app/utils/srt.py`：封装 SRT 时间格式、解析和写入工具。
