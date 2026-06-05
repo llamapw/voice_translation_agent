@@ -9,7 +9,11 @@ from app.services.job_service import JobService
 from app.services.subtitle_service import SubtitleService
 
 
-def build_test_client(storage_root=None) -> TestClient:
+def build_test_client(
+    storage_root=None,
+    use_real_worker=False,
+    real_worker=None,
+) -> TestClient:
     service = JobService()
     app = FastAPI()
     app.include_router(
@@ -18,6 +22,8 @@ def build_test_client(storage_root=None) -> TestClient:
             media_service=MediaService(),
             subtitle_service=SubtitleService(),
             storage_root=storage_root,
+            use_real_worker=use_real_worker,
+            real_worker=real_worker,
         ),
         prefix="/api/jobs",
     )
@@ -80,6 +86,55 @@ def test_create_job_runs_mock_subtitle_job_after_response(tmp_path):
     assert fetched["progress"] == 100
     assert paths.subtitles_json.exists()
     assert paths.output_srt.exists()
+
+
+def test_create_job_runs_real_worker_when_enabled(tmp_path):
+    calls = []
+
+    def fake_real_worker(
+        job_id,
+        paths,
+        job_service,
+        media_service,
+        asr_service,
+        llm_service,
+        subtitle_service,
+    ):
+        calls.append(
+            {
+                "job_id": job_id,
+                "paths": paths,
+                "media_service": media_service,
+                "asr_service": asr_service,
+                "llm_service": llm_service,
+                "subtitle_service": subtitle_service,
+            }
+        )
+        return job_service.update_job(
+            job_id,
+            status=JobStatus.done,
+            progress=100,
+            message="Real worker completed.",
+        )
+
+    client = build_test_client(
+        storage_root=tmp_path,
+        use_real_worker=True,
+        real_worker=fake_real_worker,
+    )
+
+    response = client.post(
+        "/api/jobs",
+        files={"file": ("meeting.mp4", b"fake video", "video/mp4")},
+    )
+
+    created = response.json()
+    fetched = client.get("/api/jobs/{0}".format(created["id"])).json()
+    assert response.status_code == 200
+    assert fetched["status"] == JobStatus.done
+    assert fetched["message"] == "Real worker completed."
+    assert len(calls) == 1
+    assert calls[0]["job_id"] == created["id"]
 
 
 def test_read_job_video_returns_uploaded_video_file(tmp_path):

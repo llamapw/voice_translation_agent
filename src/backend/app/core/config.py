@@ -7,6 +7,13 @@ def _split_csv(value: str) -> List[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def _read_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+
 @dataclass
 class Settings:
     app_name: str = field(default_factory=lambda: os.getenv("APP_NAME", "voice_translation_agent"))
@@ -38,6 +45,7 @@ class Settings:
         or os.getenv("QINIU_AI_API_KEY")
         or os.getenv("qiniu_ai_api_key")
     )
+    use_real_worker: bool = field(default_factory=lambda: _read_bool("USE_REAL_WORKER"))
 
 
 settings = Settings()

@@ -16,6 +16,7 @@ def test_settings_provides_default_runtime_values():
     assert settings.llm_model == "qwen-turbo"
     assert settings.llm_base_url == "https://api.qnaigc.com/v1"
     assert settings.llm_api_key is None
+    assert settings.use_real_worker is False
 
 
 def test_settings_reads_environment_overrides(monkeypatch):
@@ -31,6 +32,7 @@ def test_settings_reads_environment_overrides(monkeypatch):
     monkeypatch.setenv("LLM_MODEL", "custom-llm")
     monkeypatch.setenv("LLM_BASE_URL", "https://example.test/v1")
     monkeypatch.setenv("LLM_API_KEY", "llm-secret")
+    monkeypatch.setenv("USE_REAL_WORKER", "true")
 
     settings = Settings()
 
@@ -49,3 +51,32 @@ def test_settings_reads_environment_overrides(monkeypatch):
     assert settings.llm_model == "custom-llm"
     assert settings.llm_base_url == "https://example.test/v1"
     assert settings.llm_api_key == "llm-secret"
+    assert settings.use_real_worker is True
+
+
+def test_settings_reads_values_from_env_file(tmp_path, monkeypatch):
+    monkeypatch.delenv("APP_NAME", raising=False)
+    monkeypatch.delenv("USE_REAL_WORKER", raising=False)
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "APP_NAME=file_service\n"
+        "CORS_ORIGINS=http://localhost:5173,http://localhost:4173\n"
+        "USE_REAL_WORKER=true\n",
+        encoding="utf-8",
+    )
+
+    settings = Settings(env_file=env_file)
+
+    assert settings.app_name == "file_service"
+    assert settings.cors_origins == ["http://localhost:5173", "http://localhost:4173"]
+    assert settings.use_real_worker is True
+
+
+def test_environment_variables_override_env_file(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    env_file.write_text("APP_NAME=file_service\n", encoding="utf-8")
+    monkeypatch.setenv("APP_NAME", "environment_service")
+
+    settings = Settings(env_file=env_file)
+
+    assert settings.app_name == "environment_service"
