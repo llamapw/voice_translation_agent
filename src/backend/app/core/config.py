@@ -31,6 +31,13 @@ class Settings:
         )
     )
     dashscope_api_key: Optional[str] = field(default_factory=lambda: os.getenv("DASHSCOPE_API_KEY"))
+    llm_model: str = field(default_factory=lambda: os.getenv("LLM_MODEL", "qwen-turbo"))
+    llm_base_url: str = field(default_factory=lambda: os.getenv("LLM_BASE_URL", "https://api.qnaigc.com/v1"))
+    llm_api_key: Optional[str] = field(
+        default_factory=lambda: os.getenv("LLM_API_KEY")
+        or os.getenv("QINIU_AI_API_KEY")
+        or os.getenv("qiniu_ai_api_key")
+    )
 
 
 settings = Settings()

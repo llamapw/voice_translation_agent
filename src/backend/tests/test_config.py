@@ -13,6 +13,9 @@ def test_settings_provides_default_runtime_values():
     assert settings.asr_model == "fun-asr-realtime"
     assert settings.dashscope_websocket_url == "wss://dashscope.aliyuncs.com/api-ws/v1/inference"
     assert settings.dashscope_api_key is None
+    assert settings.llm_model == "qwen-turbo"
+    assert settings.llm_base_url == "https://api.qnaigc.com/v1"
+    assert settings.llm_api_key is None
 
 
 def test_settings_reads_environment_overrides(monkeypatch):
@@ -25,6 +28,9 @@ def test_settings_reads_environment_overrides(monkeypatch):
     monkeypatch.setenv("ASR_MODEL", "custom-asr")
     monkeypatch.setenv("DASHSCOPE_WEBSOCKET_URL", "wss://example.test/asr")
     monkeypatch.setenv("DASHSCOPE_API_KEY", "secret")
+    monkeypatch.setenv("LLM_MODEL", "custom-llm")
+    monkeypatch.setenv("LLM_BASE_URL", "https://example.test/v1")
+    monkeypatch.setenv("LLM_API_KEY", "llm-secret")
 
     settings = Settings()
 
@@ -40,3 +46,6 @@ def test_settings_reads_environment_overrides(monkeypatch):
     assert settings.asr_model == "custom-asr"
     assert settings.dashscope_websocket_url == "wss://example.test/asr"
     assert settings.dashscope_api_key == "secret"
+    assert settings.llm_model == "custom-llm"
+    assert settings.llm_base_url == "https://example.test/v1"
+    assert settings.llm_api_key == "llm-secret"
