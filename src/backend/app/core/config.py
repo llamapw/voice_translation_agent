@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 
 def _split_csv(value: str) -> List[str]:
@@ -23,6 +23,14 @@ class Settings:
         default_factory=lambda: os.getenv("DEFAULT_TARGET_LANGUAGE", "zh")
     )
     ffmpeg_binary: str = field(default_factory=lambda: os.getenv("FFMPEG_BINARY", "ffmpeg"))
+    asr_model: str = field(default_factory=lambda: os.getenv("ASR_MODEL", "fun-asr-realtime"))
+    dashscope_websocket_url: str = field(
+        default_factory=lambda: os.getenv(
+            "DASHSCOPE_WEBSOCKET_URL",
+            "wss://dashscope.aliyuncs.com/api-ws/v1/inference",
+        )
+    )
+    dashscope_api_key: Optional[str] = field(default_factory=lambda: os.getenv("DASHSCOPE_API_KEY"))
 
 
 settings = Settings()
