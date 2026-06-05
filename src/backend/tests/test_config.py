@@ -9,6 +9,7 @@ def test_settings_provides_default_runtime_values():
     assert settings.cors_origins == ["http://localhost:5173"]
     assert settings.default_source_language == "en"
     assert settings.default_target_language == "zh"
+    assert settings.ffmpeg_binary == "ffmpeg"
 
 
 def test_settings_reads_environment_overrides(monkeypatch):
@@ -17,6 +18,7 @@ def test_settings_reads_environment_overrides(monkeypatch):
     monkeypatch.setenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000")
     monkeypatch.setenv("DEFAULT_SOURCE_LANGUAGE", "ja")
     monkeypatch.setenv("DEFAULT_TARGET_LANGUAGE", "zh")
+    monkeypatch.setenv("FFMPEG_BINARY", "custom-ffmpeg")
 
     settings = Settings()
 
@@ -28,3 +30,4 @@ def test_settings_reads_environment_overrides(monkeypatch):
     ]
     assert settings.default_source_language == "ja"
     assert settings.default_target_language == "zh"
+    assert settings.ffmpeg_binary == "custom-ffmpeg"

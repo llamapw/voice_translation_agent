@@ -22,6 +22,7 @@ class Settings:
     default_target_language: str = field(
         default_factory=lambda: os.getenv("DEFAULT_TARGET_LANGUAGE", "zh")
     )
+    ffmpeg_binary: str = field(default_factory=lambda: os.getenv("FFMPEG_BINARY", "ffmpeg"))
 
 
 settings = Settings()
