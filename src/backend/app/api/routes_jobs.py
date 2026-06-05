@@ -1,11 +1,21 @@
+from pathlib import Path
+from typing import Optional
+
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
+from app.core.paths import build_job_paths, get_default_storage_root
 from app.models.job import JobCreateOptions, JobRead
 from app.services.job_service import JobNotFoundError, JobService, job_service
+from app.services.media_service import MediaService, media_service
 
 
-def create_jobs_router(service: JobService) -> APIRouter:
+def create_jobs_router(
+    job_service: JobService,
+    media_service: MediaService,
+    storage_root: Optional[Path] = None,
+) -> APIRouter:
     router = APIRouter()
+    resolved_storage_root = storage_root or get_default_storage_root()
 
     @router.post("", response_model=JobRead)
     def create_job(
@@ -25,16 +35,24 @@ def create_jobs_router(service: JobService) -> APIRouter:
             llm_model=llm_model,
             subtitle_mode=subtitle_mode,
         )
-        return service.create_job(options=options, original_filename=file.filename)
+        job = job_service.create_job(options=options, original_filename=file.filename)
+        input_extension = Path(file.filename or "input.mp4").suffix or ".mp4"
+        paths = build_job_paths(
+            job.id,
+            storage_root=resolved_storage_root,
+            input_extension=input_extension,
+        )
+        media_service.save_binary_file(file.file, paths.input_video)
+        return job
 
     @router.get("/{job_id}", response_model=JobRead)
     def read_job(job_id: str) -> JobRead:
         try:
-            return service.get_job(job_id)
+            return job_service.get_job(job_id)
         except JobNotFoundError:
             raise HTTPException(status_code=404, detail="Job not found.")
 
     return router
 
 
-router = create_jobs_router(job_service)
+router = create_jobs_router(job_service=job_service, media_service=media_service)
