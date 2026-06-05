@@ -32,4 +32,5 @@ def test_job_read_defaults_to_pending_task():
     assert job.status == JobStatus.pending
     assert job.progress == 0
     assert job.message == "Task is waiting to start."
+    assert job.input_extension == ".mp4"
     assert job.error is None

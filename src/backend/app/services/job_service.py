@@ -17,6 +17,7 @@ class JobService:
         self,
         options: JobCreateOptions,
         original_filename: Optional[str],
+        input_extension: str = ".mp4",
     ) -> JobRead:
         job = JobRead(
             source_language=options.source_language,
@@ -26,6 +27,7 @@ class JobService:
             llm_model=options.llm_model,
             subtitle_mode=options.subtitle_mode,
             original_filename=original_filename,
+            input_extension=input_extension,
         )
         job.video_url = "/api/jobs/{0}/video".format(job.id)
         job.subtitle_url = "/api/jobs/{0}/subtitles".format(job.id)

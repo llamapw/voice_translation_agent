@@ -40,6 +40,7 @@ class JobRead(BaseModel):
     llm_model: str = "default"
     subtitle_mode: SubtitleMode = "bilingual"
     original_filename: Optional[str] = None
+    input_extension: str = ".mp4"
     video_url: Optional[str] = None
     subtitle_url: Optional[str] = None
     srt_download_url: Optional[str] = None

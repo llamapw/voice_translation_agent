@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
 from app.core.paths import build_job_paths, get_default_storage_root
 from app.models.job import JobCreateOptions, JobRead
@@ -35,8 +36,12 @@ def create_jobs_router(
             llm_model=llm_model,
             subtitle_mode=subtitle_mode,
         )
-        job = job_service.create_job(options=options, original_filename=file.filename)
         input_extension = Path(file.filename or "input.mp4").suffix or ".mp4"
+        job = job_service.create_job(
+            options=options,
+            original_filename=file.filename,
+            input_extension=input_extension,
+        )
         paths = build_job_paths(
             job.id,
             storage_root=resolved_storage_root,
@@ -51,6 +56,23 @@ def create_jobs_router(
             return job_service.get_job(job_id)
         except JobNotFoundError:
             raise HTTPException(status_code=404, detail="Job not found.")
+
+    @router.get("/{job_id}/video")
+    def read_job_video(job_id: str) -> FileResponse:
+        try:
+            job = job_service.get_job(job_id)
+        except JobNotFoundError:
+            raise HTTPException(status_code=404, detail="Job not found.")
+
+        path = build_job_paths(
+            job.id,
+            storage_root=resolved_storage_root,
+            input_extension=job.input_extension,
+        ).input_video
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="Video not found.")
+
+        return FileResponse(path=path, filename=job.original_filename or path.name)
 
     return router
 

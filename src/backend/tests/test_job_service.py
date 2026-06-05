@@ -8,12 +8,17 @@ def test_create_job_stores_options_and_builds_resource_urls():
     service = JobService()
     options = JobCreateOptions(source_language="ja", target_language="zh")
 
-    job = service.create_job(options=options, original_filename="meeting.mp4")
+    job = service.create_job(
+        options=options,
+        original_filename="meeting.webm",
+        input_extension=".webm",
+    )
 
     assert job.id.startswith("job_")
     assert job.source_language == "ja"
     assert job.target_language == "zh"
-    assert job.original_filename == "meeting.mp4"
+    assert job.original_filename == "meeting.webm"
+    assert job.input_extension == ".webm"
     assert job.video_url == "/api/jobs/{0}/video".format(job.id)
     assert job.subtitle_url == "/api/jobs/{0}/subtitles".format(job.id)
     assert job.srt_download_url == "/api/jobs/{0}/srt".format(job.id)

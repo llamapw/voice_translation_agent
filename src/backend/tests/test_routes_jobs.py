@@ -21,8 +21,8 @@ def build_test_client(storage_root=None) -> TestClient:
     return TestClient(app)
 
 
-def test_create_job_accepts_video_upload_and_returns_pending_job():
-    client = build_test_client()
+def test_create_job_accepts_video_upload_and_returns_pending_job(tmp_path):
+    client = build_test_client(storage_root=tmp_path)
 
     response = client.post(
         "/api/jobs",
@@ -50,17 +50,46 @@ def test_create_job_saves_uploaded_video_to_job_storage(tmp_path):
 
     response = client.post(
         "/api/jobs",
-        files={"file": ("meeting.mp4", b"fake video", "video/mp4")},
+        files={"file": ("meeting.webm", b"fake video", "video/webm")},
     )
 
     payload = response.json()
-    paths = build_job_paths(payload["id"], storage_root=tmp_path, input_extension=".mp4")
+    paths = build_job_paths(payload["id"], storage_root=tmp_path, input_extension=".webm")
     assert response.status_code == 200
+    assert payload["input_extension"] == ".webm"
     assert paths.input_video.read_bytes() == b"fake video"
 
 
-def test_read_job_returns_created_job():
-    client = build_test_client()
+def test_read_job_video_returns_uploaded_video_file(tmp_path):
+    client = build_test_client(storage_root=tmp_path)
+    created = client.post(
+        "/api/jobs",
+        files={"file": ("meeting.webm", b"fake video", "video/webm")},
+    ).json()
+
+    response = client.get(created["video_url"])
+
+    assert response.status_code == 200
+    assert response.content == b"fake video"
+
+
+def test_read_job_video_returns_404_when_file_is_missing(tmp_path):
+    client = build_test_client(storage_root=tmp_path)
+    created = client.post(
+        "/api/jobs",
+        files={"file": ("meeting.mp4", b"fake video", "video/mp4")},
+    ).json()
+    paths = build_job_paths(created["id"], storage_root=tmp_path)
+    paths.input_video.unlink()
+
+    response = client.get(created["video_url"])
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Video not found."}
+
+
+def test_read_job_returns_created_job(tmp_path):
+    client = build_test_client(storage_root=tmp_path)
     created = client.post(
         "/api/jobs",
         files={"file": ("meeting.mp4", b"fake video", "video/mp4")},
