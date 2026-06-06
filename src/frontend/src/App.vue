@@ -54,6 +54,8 @@ const isGeneratingInsight = ref(false);
 const appError = ref<string | null>(null);
 const eventStreamState = ref<"idle" | "open" | "closed">("idle");
 const activeResultTab = ref<"subtitles" | "insight">("subtitles");
+const isResultRailCollapsed = ref(false);
+const resultRailWidth = ref(430);
 let pollTimer: number | null = null;
 let eventSource: EventSource | null = null;
 
@@ -107,6 +109,54 @@ const topbarProgressLabel = computed(() => `${currentJob.value?.progress ?? 0}%`
 const topbarSubtitleCountLabel = computed(() => `${subtitles.value.length} 条字幕`);
 const canGenerateInsight = computed(() => currentJob.value?.status === "done");
 const glossaryTerms = computed(() => buildInsightTermNames(insight.value?.items ?? []));
+const workbenchLayoutStyle = computed(() => ({
+  "--result-rail-width": isResultRailCollapsed.value ? "56px" : `${resultRailWidth.value}px`,
+}));
+
+function clampResultRailWidth(width: number): number {
+  return Math.min(620, Math.max(360, width));
+}
+
+function setResultRailCollapsed(collapsed: boolean): void {
+  isResultRailCollapsed.value = collapsed;
+}
+
+function handleResultRailResize(event: PointerEvent): void {
+  if (isResultRailCollapsed.value) {
+    return;
+  }
+
+  const workbench = document.querySelector(".app-workbench");
+  const rightEdge =
+    workbench instanceof HTMLElement ? workbench.getBoundingClientRect().right : window.innerWidth;
+  const nextWidth = rightEdge - event.clientX;
+  resultRailWidth.value = clampResultRailWidth(nextWidth);
+}
+
+function stopResultRailResize(): void {
+  window.removeEventListener("pointermove", handleResultRailResize);
+  window.removeEventListener("pointerup", stopResultRailResize);
+}
+
+function startResultRailResize(event: PointerEvent): void {
+  if (isResultRailCollapsed.value) {
+    return;
+  }
+
+  event.preventDefault();
+  window.addEventListener("pointermove", handleResultRailResize);
+  window.addEventListener("pointerup", stopResultRailResize);
+}
+
+function handleResultRailResizeKeydown(event: KeyboardEvent): void {
+  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
+    return;
+  }
+
+  event.preventDefault();
+  const delta = event.key === "ArrowLeft" ? 24 : -24;
+  resultRailWidth.value = clampResultRailWidth(resultRailWidth.value + delta);
+}
 
 function clearPollTimer(): void {
   if (pollTimer !== null) {
@@ -313,6 +363,7 @@ async function handleUpload(input: CreateJobInput): Promise<void> {
 onBeforeUnmount(() => {
   clearPollTimer();
   closeEventSource();
+  stopResultRailResize();
 });
 </script>
 
@@ -368,7 +419,11 @@ onBeforeUnmount(() => {
 
       <p v-if="appError" class="error-message" role="alert">{{ appError }}</p>
 
-      <div class="workbench-layout">
+      <div
+        class="workbench-layout"
+        :data-result-rail-collapsed="isResultRailCollapsed"
+        :style="workbenchLayoutStyle"
+      >
         <aside class="control-rail" data-testid="control-rail">
           <UploadPanel :is-submitting="isSubmitting" @submit="handleUpload" />
         </aside>
@@ -407,8 +462,52 @@ onBeforeUnmount(() => {
           </section>
         </section>
 
-        <aside class="subtitle-rail" data-testid="subtitle-rail">
-          <section class="result-workspace">
+        <aside
+          class="subtitle-rail"
+          data-testid="subtitle-rail"
+          :data-collapsed="isResultRailCollapsed"
+        >
+          <button
+            v-if="isResultRailCollapsed"
+            class="result-rail-expand"
+            data-testid="result-rail-expand"
+            type="button"
+            aria-label="展开结果边栏"
+            @click="setResultRailCollapsed(false)"
+          >
+            结果
+            <span>{{ subtitles.length }}</span>
+          </button>
+
+          <div
+            v-if="!isResultRailCollapsed"
+            class="result-resize-handle"
+            data-testid="result-resize-handle"
+            role="separator"
+            aria-label="调整结果边栏宽度"
+            aria-orientation="vertical"
+            tabindex="0"
+            @pointerdown="startResultRailResize"
+            @keydown="handleResultRailResizeKeydown"
+          />
+
+          <section v-if="!isResultRailCollapsed" class="result-workspace">
+            <div class="result-rail-header">
+              <div>
+                <span>结果边栏</span>
+                <strong>{{ activeResultTab === "subtitles" ? "字幕时间轴" : "知识笔记" }}</strong>
+              </div>
+              <button
+                class="result-rail-toggle"
+                data-testid="result-rail-collapse"
+                type="button"
+                aria-label="收起结果边栏"
+                @click="setResultRailCollapsed(true)"
+              >
+                收起
+              </button>
+            </div>
+
             <div class="result-tabs" data-testid="result-tabs" role="tablist" aria-label="结果视图">
               <button
                 data-testid="result-tab-subtitles"

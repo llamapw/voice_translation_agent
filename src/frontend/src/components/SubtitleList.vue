@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import type { ComponentPublicInstance } from "vue";
+import { watch } from "vue";
+
 import { formatCueTime, type SubtitleCue } from "../types/subtitle";
 import { buildTermHighlightSegments } from "../utils/termHighlight";
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   cues: SubtitleCue[];
   activeCueIndex?: number | null;
   terms?: string[];
@@ -14,9 +17,46 @@ defineEmits<{
   select: [cue: SubtitleCue];
 }>();
 
+const cueItemRefs = new Map<number, HTMLElement>();
+
 function formatCueDuration(cue: SubtitleCue): string {
   return `${Math.max(0, cue.end - cue.start).toFixed(2)}s`;
 }
+
+function setCueItemRef(
+  cueIndex: number,
+  element: Element | ComponentPublicInstance | null,
+): void {
+  if (element instanceof HTMLElement) {
+    cueItemRefs.set(cueIndex, element);
+    return;
+  }
+
+  cueItemRefs.delete(cueIndex);
+}
+
+function scrollActiveCueIntoView(activeCueIndex: number | null | undefined): void {
+  if (activeCueIndex === null || activeCueIndex === undefined) {
+    return;
+  }
+
+  const activeCue = cueItemRefs.get(activeCueIndex);
+  if (!activeCue || typeof activeCue.scrollIntoView !== "function") {
+    return;
+  }
+
+  activeCue.scrollIntoView({
+    behavior: "smooth",
+    block: "nearest",
+  });
+}
+
+watch(
+  () => props.activeCueIndex,
+  (activeCueIndex) => {
+    scrollActiveCueIntoView(activeCueIndex);
+  },
+);
 </script>
 
 <template>
@@ -50,6 +90,8 @@ function formatCueDuration(cue: SubtitleCue): string {
         <button
           class="subtitle-item"
           type="button"
+          :ref="(element) => setCueItemRef(cue.index, element)"
+          :data-subtitle-cue-index="cue.index"
           :data-active="cue.index === activeCueIndex"
           :aria-current="cue.index === activeCueIndex ? 'true' : undefined"
           @click="$emit('select', cue)"

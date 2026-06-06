@@ -155,6 +155,46 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="subtitle-panel"]').exists()).toBe(false);
   });
 
+  it("collapses and expands the result rail", async () => {
+    const wrapper = mount(App);
+
+    expect(wrapper.get('[data-testid="subtitle-rail"]').attributes("data-collapsed")).toBe(
+      "false",
+    );
+
+    await wrapper.get('[data-testid="result-rail-collapse"]').trigger("click");
+
+    expect(wrapper.get('[data-testid="subtitle-rail"]').attributes("data-collapsed")).toBe("true");
+    expect(wrapper.find('[data-testid="result-tabs"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="result-rail-expand"]').text()).toContain("结果");
+
+    await wrapper.get('[data-testid="result-rail-expand"]').trigger("click");
+
+    expect(wrapper.get('[data-testid="subtitle-rail"]').attributes("data-collapsed")).toBe(
+      "false",
+    );
+    expect(wrapper.find('[data-testid="result-tabs"]').exists()).toBe(true);
+  });
+
+  it("resizes the result rail with keyboard controls", async () => {
+    const wrapper = mount(App);
+    const layout = wrapper.get(".workbench-layout");
+
+    expect(layout.attributes("style")).toContain("--result-rail-width: 430px");
+
+    await wrapper.get('[data-testid="result-resize-handle"]').trigger("keydown", {
+      key: "ArrowLeft",
+    });
+
+    expect(layout.attributes("style")).toContain("--result-rail-width: 454px");
+
+    await wrapper.get('[data-testid="result-resize-handle"]').trigger("keydown", {
+      key: "ArrowRight",
+    });
+
+    expect(layout.attributes("style")).toContain("--result-rail-width: 430px");
+  });
+
   it("renders localized topbar status metrics after a job is loaded", async () => {
     vi.useFakeTimers();
     const createdJob = buildJob();

@@ -1,5 +1,5 @@
 import { mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import SubtitleList from "./SubtitleList.vue";
 import type { SubtitleCue } from "../types/subtitle";
@@ -99,5 +99,26 @@ describe("SubtitleList", () => {
     expect(wrapper.get('[data-testid="term-highlight-可补偿热应激"]').text()).toBe(
       "可补偿热应激",
     );
+  });
+
+  it("scrolls the active cue into view when playback moves", async () => {
+    const scrollIntoView = vi.fn();
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scrollIntoView;
+    const wrapper = mount(SubtitleList, {
+      props: {
+        cues,
+        activeCueIndex: 1,
+      },
+    });
+
+    await wrapper.setProps({ activeCueIndex: 2 });
+
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      behavior: "smooth",
+      block: "nearest",
+    });
+
+    Element.prototype.scrollIntoView = originalScrollIntoView;
   });
 });
