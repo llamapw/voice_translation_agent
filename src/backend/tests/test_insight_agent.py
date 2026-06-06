@@ -114,6 +114,17 @@ def test_langchain_insight_agent_generates_insight_from_chat_model_json():
     assert "运动会产生热量。" in chat_model.messages[1]["content"]
 
 
+def test_langchain_insight_agent_prompt_requires_term_items():
+    chat_model = FakeChatModel('{"summary": "摘要", "items": []}')
+
+    LangChainInsightAgent(chat_model=chat_model).generate("job_test", [])
+
+    user_prompt = chat_model.messages[1]["content"]
+    assert "必须提取术语" in user_prompt
+    assert '"type": "term"' in user_prompt
+    assert "术语 title 使用术语原词" in user_prompt
+
+
 def test_langchain_insight_agent_accepts_markdown_fenced_json():
     chat_model = FakeChatModel(
         """```json
