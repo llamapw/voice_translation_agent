@@ -10,6 +10,8 @@ class JobPaths:
     audio_wav: Path
     subtitles_json: Path
     output_srt: Path
+    insight_json: Path
+    insight_markdown: Path
 
 
 def get_default_storage_root() -> Path:
@@ -31,4 +33,6 @@ def build_job_paths(
         audio_wav=job_root / "audio.wav",
         subtitles_json=job_root / "subtitles.json",
         output_srt=job_root / "output.srt",
+        insight_json=job_root / "insight.json",
+        insight_markdown=job_root / "insight.md",
     )
