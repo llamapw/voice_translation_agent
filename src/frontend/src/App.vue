@@ -53,6 +53,7 @@ const isSubmitting = ref(false);
 const isGeneratingInsight = ref(false);
 const appError = ref<string | null>(null);
 const eventStreamState = ref<"idle" | "open" | "closed">("idle");
+const activeResultTab = ref<"subtitles" | "insight">("subtitles");
 let pollTimer: number | null = null;
 let eventSource: EventSource | null = null;
 
@@ -407,21 +408,54 @@ onBeforeUnmount(() => {
         </section>
 
         <aside class="subtitle-rail" data-testid="subtitle-rail">
-          <SubtitlePanel
-            :cues="subtitles"
-            :srt-url="currentJob?.srt_download_url ?? null"
-            :active-cue-index="activeSubtitle?.index ?? null"
-            :terms="glossaryTerms"
-            @select="handleSubtitleSelect"
-          />
-          <InsightPanel
-            :insight="insight"
-            :is-loading="isGeneratingInsight"
-            :can-generate="canGenerateInsight"
-            :active-item-id="activeInsightItem?.id ?? null"
-            @generate="handleGenerateInsight"
-            @select-item="handleInsightSelect"
-          />
+          <section class="result-workspace">
+            <div class="result-tabs" data-testid="result-tabs" role="tablist" aria-label="结果视图">
+              <button
+                data-testid="result-tab-subtitles"
+                type="button"
+                role="tab"
+                :aria-selected="activeResultTab === 'subtitles'"
+                :data-active="activeResultTab === 'subtitles'"
+                @click="activeResultTab = 'subtitles'"
+              >
+                字幕
+                <span>{{ subtitles.length }}</span>
+              </button>
+              <button
+                data-testid="result-tab-insight"
+                type="button"
+                role="tab"
+                :aria-selected="activeResultTab === 'insight'"
+                :data-active="activeResultTab === 'insight'"
+                @click="activeResultTab = 'insight'"
+              >
+                笔记
+                <span>{{ insight?.items.length ?? 0 }}</span>
+              </button>
+            </div>
+
+            <div class="result-pane">
+              <SubtitlePanel
+                v-if="activeResultTab === 'subtitles'"
+                data-testid="subtitle-panel"
+                :cues="subtitles"
+                :srt-url="currentJob?.srt_download_url ?? null"
+                :active-cue-index="activeSubtitle?.index ?? null"
+                :terms="glossaryTerms"
+                @select="handleSubtitleSelect"
+              />
+              <InsightPanel
+                v-else
+                data-testid="insight-panel"
+                :insight="insight"
+                :is-loading="isGeneratingInsight"
+                :can-generate="canGenerateInsight"
+                :active-item-id="activeInsightItem?.id ?? null"
+                @generate="handleGenerateInsight"
+                @select-item="handleInsightSelect"
+              />
+            </div>
+          </section>
         </aside>
       </div>
     </section>

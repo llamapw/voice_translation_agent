@@ -536,11 +536,15 @@ describe("App", () => {
     await wrapper.get("form").trigger("submit");
     await vi.runOnlyPendingTimersAsync();
     await wrapper.vm.$nextTick();
+    await wrapper.get('[data-testid="result-tab-insight"]').trigger("click");
+    await wrapper.vm.$nextTick();
     await wrapper.get('[data-testid="generate-insight"]').trigger("click");
     await wrapper.vm.$nextTick();
 
     expect(wrapper.get('[data-testid="video-glossary"]').text()).toContain("热应激");
     expect(wrapper.get('[data-testid="video-glossary"]').text()).toContain("heat stress");
+    await wrapper.get('[data-testid="result-tab-subtitles"]').trigger("click");
+    await wrapper.vm.$nextTick();
     expect(wrapper.get('[data-testid="term-highlight-Heat stress"]').text()).toBe("Heat stress");
     expect(wrapper.get('[data-testid="term-highlight-热应激"]').text()).toBe("热应激");
   });
@@ -574,6 +578,8 @@ describe("App", () => {
     await fileInput.trigger("change");
     await wrapper.get("form").trigger("submit");
     await vi.runOnlyPendingTimersAsync();
+    await wrapper.vm.$nextTick();
+    await wrapper.get('[data-testid="result-tab-insight"]').trigger("click");
     await wrapper.vm.$nextTick();
     await wrapper.get('[data-testid="generate-insight"]').trigger("click");
     await wrapper.vm.$nextTick();
