@@ -13,6 +13,14 @@ const cues: SubtitleCue[] = [
     target_text: "你好",
     display_text: "Hello\n你好",
   },
+  {
+    index: 2,
+    start: 14.0,
+    end: 18.5,
+    source_text: "Next line",
+    target_text: "下一句",
+    display_text: "Next line\n下一句",
+  },
 ];
 
 describe("SubtitleList", () => {
@@ -38,5 +46,21 @@ describe("SubtitleList", () => {
     expect(wrapper.text()).toContain("00:13.510");
     expect(wrapper.text()).toContain("Hello");
     expect(wrapper.text()).toContain("你好");
+  });
+
+  it("marks the active cue and emits selected cues", async () => {
+    const wrapper = mount(SubtitleList, {
+      props: {
+        cues,
+        activeCueIndex: 2,
+      },
+    });
+
+    const items = wrapper.findAll(".subtitle-item");
+    expect(items[1].attributes("data-active")).toBe("true");
+
+    await items[0].trigger("click");
+
+    expect(wrapper.emitted("select")?.[0]).toEqual([cues[0]]);
   });
 });

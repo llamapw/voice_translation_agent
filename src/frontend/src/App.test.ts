@@ -17,6 +17,18 @@ const subtitles: SubtitleCue[] = [
   },
 ];
 
+const timelineSubtitles: SubtitleCue[] = [
+  subtitles[0],
+  {
+    index: 2,
+    start: 14,
+    end: 18.5,
+    source_text: "Next line",
+    target_text: "下一句",
+    display_text: "Next line\n下一句",
+  },
+];
+
 function buildJob(overrides: Partial<JobRead> = {}): JobRead {
   return {
     id: "job_test",
@@ -174,6 +186,53 @@ describe("App", () => {
     expect(eventSource.closed).toBe(true);
     expect(getSubtitles).not.toHaveBeenCalled();
     expect(getJob).not.toHaveBeenCalled();
+  });
+
+  it("links subtitle selection with the video timeline", async () => {
+    vi.useFakeTimers();
+    const createdJob = buildJob();
+    const doneJob = buildJob({
+      status: "done",
+      progress: 100,
+      message: "Subtitle task completed.",
+    });
+    const wrapper = mount(App, {
+      props: {
+        createJob: vi.fn().mockResolvedValue(createdJob),
+        getJob: vi.fn().mockResolvedValue(doneJob),
+        getSubtitles: vi.fn().mockResolvedValue(timelineSubtitles),
+        createJobEventSource: vi.fn().mockReturnValue(new FakeEventSource()),
+        pollIntervalMs: 10,
+      },
+    });
+    const file = new File(["demo"], "demo.mp4", { type: "video/mp4" });
+    const fileInput = wrapper.get<HTMLInputElement>('[data-testid="video-file"]');
+
+    Object.defineProperty(fileInput.element, "files", {
+      value: [file],
+      configurable: true,
+    });
+
+    await fileInput.trigger("change");
+    await wrapper.get("form").trigger("submit");
+    await vi.runOnlyPendingTimersAsync();
+    await wrapper.vm.$nextTick();
+
+    const video = wrapper.get<HTMLVideoElement>("video");
+    Object.defineProperty(video.element, "currentTime", {
+      value: 15,
+      writable: true,
+      configurable: true,
+    });
+    await video.trigger("timeupdate");
+    await wrapper.vm.$nextTick();
+
+    const items = wrapper.findAll(".subtitle-item");
+    expect(items[1].attributes("data-active")).toBe("true");
+
+    await items[0].trigger("click");
+
+    expect(video.element.currentTime).toBe(0.55);
   });
 
   it("shows an error when job creation fails", async () => {

@@ -368,6 +368,24 @@ h2 {
   border: 1px solid #d9e2ea;
   border-radius: 6px;
   background: #fbfdff;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.subtitle-item:hover,
+.subtitle-item:focus-visible {
+  border-color: #93c5cf;
+  background: #f4fbfc;
+  outline: none;
+}
+
+.subtitle-item[data-active="true"] {
+  border-color: #1f6f78;
+  background: #eef9fb;
+  box-shadow: inset 3px 0 0 #1f6f78;
 }
 
 .cue-meta {

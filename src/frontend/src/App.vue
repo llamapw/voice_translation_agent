@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from "vue";
+import { computed, onBeforeUnmount, ref } from "vue";
 
 import JobStatus from "./components/JobStatus.vue";
 import SubtitlePanel from "./components/SubtitlePanel.vue";
@@ -40,11 +40,21 @@ const props = withDefaults(
 const currentJob = ref<JobRead | null>(null);
 const subtitles = ref<SubtitleCue[]>([]);
 const liveSubtitle = ref<SubtitleCue | null>(null);
+const videoPlayer = ref<{ seekTo: (seconds: number) => void } | null>(null);
+const videoCurrentTime = ref(0);
 const isSubmitting = ref(false);
 const appError = ref<string | null>(null);
 const eventStreamState = ref<"idle" | "open" | "closed">("idle");
 let pollTimer: number | null = null;
 let eventSource: EventSource | null = null;
+
+const activeSubtitle = computed(
+  () =>
+    subtitles.value.find(
+      (cue) => videoCurrentTime.value >= cue.start && videoCurrentTime.value <= cue.end,
+    ) ?? null,
+);
+const displayedLiveSubtitle = computed(() => activeSubtitle.value ?? liveSubtitle.value);
 
 function clearPollTimer(): void {
   if (pollTimer !== null) {
@@ -94,6 +104,16 @@ function appendSubtitle(cue: SubtitleCue): void {
   }
 
   subtitles.value = [...subtitles.value, cue].sort((left, right) => left.index - right.index);
+}
+
+function handleVideoTimeUpdate(currentTime: number): void {
+  videoCurrentTime.value = currentTime;
+}
+
+function handleSubtitleSelect(cue: SubtitleCue): void {
+  videoPlayer.value?.seekTo(cue.start);
+  videoCurrentTime.value = cue.start;
+  liveSubtitle.value = cue;
 }
 
 function applyJobEvent(event: JobEvent): void {
@@ -187,6 +207,7 @@ async function handleUpload(input: CreateJobInput): Promise<void> {
   try {
     subtitles.value = [];
     liveSubtitle.value = null;
+    videoCurrentTime.value = 0;
     const job = await props.createJob(input);
     await updateJob(job);
 
@@ -232,20 +253,25 @@ onBeforeUnmount(() => {
         <div class="result-column">
           <JobStatus :job="currentJob" />
           <VideoPlayer
+            ref="videoPlayer"
             :video-url="currentJob?.video_url ?? null"
             :title="currentJob?.original_filename ?? null"
+            @timeupdate="handleVideoTimeUpdate"
           />
           <section class="live-subtitle-panel" data-testid="live-subtitle">
             <div class="panel-heading">
               <h2>实时字幕</h2>
             </div>
-            <div v-if="liveSubtitle" class="live-subtitle-body">
-              <p class="live-subtitle-source">{{ liveSubtitle.source_text }}</p>
+            <div v-if="displayedLiveSubtitle" class="live-subtitle-body">
+              <p class="live-subtitle-source">{{ displayedLiveSubtitle.source_text }}</p>
               <p
-                v-if="liveSubtitle.target_text && liveSubtitle.target_text !== liveSubtitle.source_text"
+                v-if="
+                  displayedLiveSubtitle.target_text &&
+                  displayedLiveSubtitle.target_text !== displayedLiveSubtitle.source_text
+                "
                 class="live-subtitle-target"
               >
-                {{ liveSubtitle.target_text }}
+                {{ displayedLiveSubtitle.target_text }}
               </p>
             </div>
             <div v-else class="empty-state">
@@ -255,6 +281,8 @@ onBeforeUnmount(() => {
           <SubtitlePanel
             :cues="subtitles"
             :srt-url="currentJob?.srt_download_url ?? null"
+            :active-cue-index="activeSubtitle?.index ?? null"
+            @select="handleSubtitleSelect"
           />
         </div>
       </div>

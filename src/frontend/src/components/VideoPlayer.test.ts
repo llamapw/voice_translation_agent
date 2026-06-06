@@ -26,4 +26,37 @@ describe("VideoPlayer", () => {
     expect(wrapper.get("video").attributes("src")).toBe("/api/jobs/job_test/video");
     expect(wrapper.text()).toContain("demo.mp4");
   });
+
+  it("emits current playback time when the video updates", async () => {
+    const wrapper = mount(VideoPlayer, {
+      props: {
+        videoUrl: "/api/jobs/job_test/video",
+        title: "demo.mp4",
+      },
+    });
+    const video = wrapper.get<HTMLVideoElement>("video");
+
+    Object.defineProperty(video.element, "currentTime", {
+      value: 12.5,
+      configurable: true,
+    });
+
+    await video.trigger("timeupdate");
+
+    expect(wrapper.emitted("timeupdate")?.[0]).toEqual([12.5]);
+  });
+
+  it("seeks the video to a requested time", async () => {
+    const wrapper = mount(VideoPlayer, {
+      props: {
+        videoUrl: "/api/jobs/job_test/video",
+        title: "demo.mp4",
+      },
+    });
+    const video = wrapper.get<HTMLVideoElement>("video");
+
+    await wrapper.vm.seekTo(12.5);
+
+    expect(video.element.currentTime).toBe(12.5);
+  });
 });
