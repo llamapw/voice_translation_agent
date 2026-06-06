@@ -10,6 +10,12 @@ import {
   getJob as defaultGetJob,
   type CreateJobInput,
 } from "./api/jobs";
+import {
+  createJobEventSource as defaultCreateJobEventSource,
+  parseJobEvent,
+  type EventSourceFactory,
+  type JobEvent,
+} from "./api/jobEvents";
 import { getSubtitles as defaultGetSubtitles } from "./api/subtitles";
 import { isFinishedJob, type JobRead } from "./types/job";
 import type { SubtitleCue } from "./types/subtitle";
@@ -19,12 +25,14 @@ const props = withDefaults(
     createJob?: (input: CreateJobInput) => Promise<JobRead>;
     getJob?: (jobId: string) => Promise<JobRead>;
     getSubtitles?: (jobId: string) => Promise<SubtitleCue[]>;
+    createJobEventSource?: (jobId: string, factory?: EventSourceFactory) => EventSource;
     pollIntervalMs?: number;
   }>(),
   {
     createJob: defaultCreateJob,
     getJob: defaultGetJob,
     getSubtitles: defaultGetSubtitles,
+    createJobEventSource: defaultCreateJobEventSource,
     pollIntervalMs: 2000,
   },
 );
@@ -34,11 +42,19 @@ const subtitles = ref<SubtitleCue[]>([]);
 const isSubmitting = ref(false);
 const appError = ref<string | null>(null);
 let pollTimer: number | null = null;
+let eventSource: EventSource | null = null;
 
 function clearPollTimer(): void {
   if (pollTimer !== null) {
     window.clearInterval(pollTimer);
     pollTimer = null;
+  }
+}
+
+function closeEventSource(): void {
+  if (eventSource !== null) {
+    eventSource.close();
+    eventSource = null;
   }
 }
 
@@ -58,8 +74,84 @@ async function updateJob(job: JobRead): Promise<void> {
   }
 
   if (job.status === "done") {
-    await loadSubtitles(job.id);
+    if (subtitles.value.length === 0) {
+      await loadSubtitles(job.id);
+    }
   }
+}
+
+function appendSubtitle(cue: SubtitleCue): void {
+  const existingIndex = subtitles.value.findIndex((item) => item.index === cue.index);
+  if (existingIndex >= 0) {
+    subtitles.value.splice(existingIndex, 1, cue);
+    return;
+  }
+
+  subtitles.value = [...subtitles.value, cue].sort((left, right) => left.index - right.index);
+}
+
+function applyJobEvent(event: JobEvent): void {
+  if (event.type === "subtitle_partial" && event.data.cue) {
+    appendSubtitle(event.data.cue);
+    return;
+  }
+
+  if (event.type === "job_status" && currentJob.value) {
+    currentJob.value = {
+      ...currentJob.value,
+      status: event.data.status ?? currentJob.value.status,
+      progress: event.data.progress ?? currentJob.value.progress,
+      message: event.data.message ?? currentJob.value.message,
+    };
+    return;
+  }
+
+  if (event.type === "job_failed") {
+    appError.value = event.data.error ?? "任务处理失败。";
+    closeEventSource();
+    clearPollTimer();
+    return;
+  }
+
+  if (event.type === "job_done") {
+    if (currentJob.value) {
+      currentJob.value = {
+        ...currentJob.value,
+        status: "done",
+        progress: 100,
+        message: "Subtitle task completed.",
+      };
+    }
+    clearPollTimer();
+    return;
+  }
+
+  if (event.type === "job_closed") {
+    closeEventSource();
+  }
+}
+
+function addJobEventListener(source: EventSource, eventName: JobEvent["type"]): void {
+  source.addEventListener(eventName, (message) => {
+    applyJobEvent(parseJobEvent((message as MessageEvent).data));
+  });
+}
+
+function startEventStream(jobId: string): void {
+  closeEventSource();
+  eventSource = props.createJobEventSource(jobId);
+  for (const eventName of [
+    "job_status",
+    "subtitle_partial",
+    "job_done",
+    "job_failed",
+    "job_closed",
+  ] as const) {
+    addJobEventListener(eventSource, eventName);
+  }
+  eventSource.onerror = () => {
+    closeEventSource();
+  };
 }
 
 async function pollJob(jobId: string): Promise<void> {
@@ -82,6 +174,7 @@ async function handleUpload(input: CreateJobInput): Promise<void> {
   isSubmitting.value = true;
   appError.value = null;
   clearPollTimer();
+  closeEventSource();
 
   try {
     subtitles.value = [];
@@ -89,6 +182,7 @@ async function handleUpload(input: CreateJobInput): Promise<void> {
     await updateJob(job);
 
     if (!isFinishedJob(job)) {
+      startEventStream(job.id);
       startPolling(job.id);
     }
   } catch (error) {
@@ -100,6 +194,7 @@ async function handleUpload(input: CreateJobInput): Promise<void> {
 
 onBeforeUnmount(() => {
   clearPollTimer();
+  closeEventSource();
 });
 </script>
 
