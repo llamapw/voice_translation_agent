@@ -245,6 +245,12 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+.selected-file-meta {
+  color: #697786;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .check-field {
   display: flex;
   align-items: center;

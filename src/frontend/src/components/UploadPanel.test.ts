@@ -52,7 +52,10 @@ describe("UploadPanel", () => {
 
     await fileInput.trigger("change");
 
-    expect(wrapper.get('[data-testid="selected-file-summary"]').text()).toContain("demo.mp4");
+    const summary = wrapper.get('[data-testid="selected-file-summary"]').text();
+    expect(summary).toContain("demo.mp4");
+    expect(summary).toContain("video/mp4");
+    expect(summary).toContain("4 B");
   });
 
   it("shows busy state while uploading", () => {
