@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
+
+import { formatCueTime } from "../types/subtitle";
 
 defineProps<{
   videoUrl: string | null;
@@ -11,16 +13,32 @@ const emit = defineEmits<{
 }>();
 
 const videoElement = ref<HTMLVideoElement | null>(null);
+const currentTime = ref(0);
+const duration = ref<number | null>(null);
+
+const timeDisplay = computed(() => {
+  const durationLabel = duration.value === null ? "--:--.---" : formatCueTime(duration.value);
+
+  return `${formatCueTime(currentTime.value)} / ${durationLabel}`;
+});
+
+function handleLoadedMetadata(): void {
+  if (videoElement.value !== null && Number.isFinite(videoElement.value.duration)) {
+    duration.value = videoElement.value.duration;
+  }
+}
 
 function handleTimeUpdate(): void {
   if (videoElement.value !== null) {
-    emit("timeupdate", videoElement.value.currentTime);
+    currentTime.value = videoElement.value.currentTime;
+    emit("timeupdate", currentTime.value);
   }
 }
 
 function seekTo(seconds: number): void {
   if (videoElement.value !== null) {
     videoElement.value.currentTime = seconds;
+    currentTime.value = seconds;
   }
 }
 
@@ -46,9 +64,13 @@ defineExpose({
       controls
       preload="metadata"
       :src="videoUrl"
+      @loadedmetadata="handleLoadedMetadata"
       @timeupdate="handleTimeUpdate"
     >
       当前浏览器不支持视频播放。
     </video>
+    <div v-if="videoUrl" class="video-time-display" data-testid="video-time-display">
+      {{ timeDisplay }}
+    </div>
   </section>
 </template>

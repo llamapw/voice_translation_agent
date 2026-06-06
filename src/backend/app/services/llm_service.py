@@ -37,6 +37,7 @@ class LLMService:
         self,
         cues: List[SubtitleCue],
         correct: bool,
+        source_language: str,
         target_language: str,
         subtitle_mode: SubtitleMode,
         on_cue: Optional[CueCallback] = None,
@@ -48,7 +49,7 @@ class LLMService:
 
             if correct:
                 source_text = self._text_generator(
-                    build_correction_prompt(cue.source_text),
+                    build_correction_prompt(cue.source_text, source_language),
                     self._model,
                 )
 
@@ -74,12 +75,14 @@ class LLMService:
         return enriched
 
 
-def build_correction_prompt(text: str) -> str:
+def build_correction_prompt(text: str, source_language: str = "") -> str:
+    language_name = get_language_name(source_language) if source_language else "原语种"
     return (
         "你是字幕文本校对助手。请纠正 ASR 或翻译造成的错别字、同音误识别、"
-        "标点和断句问题。保持原意和原语种，不扩写，不解释，只输出纠正后的字幕文本。\n"
-        "请纠正以下字幕文本:\n{0}".format(text)
-    )
+        "标点和断句问题。保持原意，不扩写，不解释。"
+        "最终输出必须全部使用{language_name}，不要翻译成其他语言。\n"
+        "请纠正以下字幕文本:\n{text}"
+    ).format(language_name=language_name, text=text)
 
 
 def build_translation_prompt(text: str, target_language: str) -> str:

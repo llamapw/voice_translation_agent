@@ -31,7 +31,11 @@ describe("SubtitleList", () => {
       },
     });
 
-    expect(wrapper.text()).toContain("暂无字幕");
+    const guide = wrapper.get('[data-testid="subtitle-empty-guide"]');
+
+    expect(guide.text()).toContain("上传视频");
+    expect(guide.text()).toContain("实时生成字幕");
+    expect(guide.text()).toContain("播放联动与导出");
   });
 
   it("renders cue index, time, and bilingual text", () => {
@@ -58,9 +62,20 @@ describe("SubtitleList", () => {
 
     const items = wrapper.findAll(".subtitle-item");
     expect(items[1].attributes("data-active")).toBe("true");
+    expect(items[1].attributes("aria-current")).toBe("true");
 
     await items[0].trigger("click");
 
     expect(wrapper.emitted("select")?.[0]).toEqual([cues[0]]);
+  });
+
+  it("shows the duration of each cue", () => {
+    const wrapper = mount(SubtitleList, {
+      props: {
+        cues,
+      },
+    });
+
+    expect(wrapper.get('[data-testid="cue-duration-1"]').text()).toContain("12.96s");
   });
 });

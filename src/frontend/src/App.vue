@@ -20,8 +20,8 @@ import {
 } from "./api/jobEvents";
 import { getSubtitles as defaultGetSubtitles } from "./api/subtitles";
 import type { InsightItem, InsightRead } from "./types/insight";
-import { isFinishedJob, type JobRead } from "./types/job";
-import type { SubtitleCue } from "./types/subtitle";
+import { isFinishedJob, statusLabel, type JobRead } from "./types/job";
+import { formatCueTime, type SubtitleCue } from "./types/subtitle";
 
 const props = withDefaults(
   defineProps<{
@@ -62,6 +62,11 @@ const activeSubtitle = computed(
     ) ?? null,
 );
 const displayedLiveSubtitle = computed(() => activeSubtitle.value ?? liveSubtitle.value);
+const topbarStatusLabel = computed(() =>
+  currentJob.value ? statusLabel[currentJob.value.status] : "等待任务",
+);
+const topbarProgressLabel = computed(() => `${currentJob.value?.progress ?? 0}%`);
+const topbarSubtitleCountLabel = computed(() => `${subtitles.value.length} 条字幕`);
 const canGenerateInsight = computed(() => currentJob.value?.status === "done");
 
 function clearPollTimer(): void {
@@ -146,7 +151,7 @@ async function handleGenerateInsight(): Promise<void> {
   }
 }
 
-function applyJobEvent(event: JobEvent): void {
+async function applyJobEvent(event: JobEvent): Promise<void> {
   if (event.type === "subtitle_partial" && event.data.cue) {
     appendSubtitle(event.data.cue);
     return;
@@ -163,7 +168,17 @@ function applyJobEvent(event: JobEvent): void {
   }
 
   if (event.type === "job_failed") {
-    appError.value = event.data.error ?? "任务处理失败。";
+    const errorMessage = event.data.error ?? "任务处理失败。";
+    appError.value = errorMessage;
+    if (currentJob.value) {
+      currentJob.value = {
+        ...currentJob.value,
+        status: "failed",
+        progress: 100,
+        message: "Task failed.",
+        error: errorMessage,
+      };
+    }
     closeEventSource();
     clearPollTimer();
     return;
@@ -177,6 +192,9 @@ function applyJobEvent(event: JobEvent): void {
         progress: 100,
         message: "Subtitle task completed.",
       };
+      if (subtitles.value.length === 0) {
+        await loadSubtitles(currentJob.value.id);
+      }
     }
     clearPollTimer();
     return;
@@ -189,7 +207,7 @@ function applyJobEvent(event: JobEvent): void {
 
 function addJobEventListener(source: EventSource, eventName: JobEvent["type"]): void {
   source.addEventListener(eventName, (message) => {
-    applyJobEvent(parseJobEvent((message as MessageEvent).data));
+    void applyJobEvent(parseJobEvent((message as MessageEvent).data));
   });
 }
 
@@ -261,27 +279,47 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="app-shell">
-    <section class="workspace">
-      <header class="workspace-header">
-        <p class="eyebrow">Subtitle workflow</p>
-        <h1>Voice Translation Agent</h1>
-        <p class="summary">Upload, transcribe, translate, and export subtitles from one focused workspace.</p>
-      </header>
+    <section class="app-workbench">
+      <header class="app-topbar" data-testid="app-topbar">
+        <div class="brand-block">
+          <p class="eyebrow">Subtitle workflow</p>
+          <h1>Voice Translation Agent</h1>
+          <p class="summary">Upload, transcribe, translate, and export subtitles from one focused workspace.</p>
+        </div>
 
-      <div class="workspace-grid">
-        <div class="control-column">
-          <UploadPanel :is-submitting="isSubmitting" @submit="handleUpload" />
+        <div class="topbar-status">
+          <div class="topbar-metric">
+            <span>状态</span>
+            <strong class="status-chip" :data-status="currentJob?.status ?? 'idle'">
+              {{ topbarStatusLabel }}
+            </strong>
+          </div>
+          <div class="topbar-metric">
+            <span>进度</span>
+            <strong>{{ topbarProgressLabel }}</strong>
+          </div>
+          <div class="topbar-metric">
+            <span>字幕</span>
+            <strong>{{ topbarSubtitleCountLabel }}</strong>
+          </div>
           <p
             v-if="eventStreamState !== 'idle'"
-            class="stream-state"
+            class="stream-state topbar-stream-state"
             :data-state="eventStreamState"
           >
             {{ eventStreamState === "open" ? "正在实时接收字幕" : "实时连接已关闭" }}
           </p>
-          <p v-if="appError" class="error-message">{{ appError }}</p>
         </div>
+      </header>
 
-        <div class="result-column">
+      <p v-if="appError" class="error-message" role="alert">{{ appError }}</p>
+
+      <div class="workbench-layout">
+        <aside class="control-rail" data-testid="control-rail">
+          <UploadPanel :is-submitting="isSubmitting" @submit="handleUpload" />
+        </aside>
+
+        <section class="preview-stage" data-testid="preview-stage">
           <JobStatus :job="currentJob" />
           <VideoPlayer
             ref="videoPlayer"
@@ -294,6 +332,13 @@ onBeforeUnmount(() => {
               <h2>实时字幕</h2>
             </div>
             <div v-if="displayedLiveSubtitle" class="live-subtitle-body">
+              <div class="live-subtitle-meta" data-testid="live-subtitle-meta">
+                <span>当前 #{{ displayedLiveSubtitle.index }}</span>
+                <span>
+                  {{ formatCueTime(displayedLiveSubtitle.start) }} -
+                  {{ formatCueTime(displayedLiveSubtitle.end) }}
+                </span>
+              </div>
               <p class="live-subtitle-source">{{ displayedLiveSubtitle.source_text }}</p>
               <p
                 v-if="
@@ -309,6 +354,9 @@ onBeforeUnmount(() => {
               等待实时字幕
             </div>
           </section>
+        </section>
+
+        <aside class="subtitle-rail" data-testid="subtitle-rail">
           <SubtitlePanel
             :cues="subtitles"
             :srt-url="currentJob?.srt_download_url ?? null"
@@ -322,7 +370,7 @@ onBeforeUnmount(() => {
             @generate="handleGenerateInsight"
             @select-item="handleInsightSelect"
           />
-        </div>
+        </aside>
       </div>
     </section>
   </main>

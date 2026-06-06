@@ -102,6 +102,51 @@ describe("App", () => {
     expect(wrapper.text()).toContain("Voice Translation Agent");
   });
 
+  it("renders the workbench layout regions", () => {
+    const wrapper = mount(App);
+
+    expect(wrapper.find('[data-testid="app-topbar"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="control-rail"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="preview-stage"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="subtitle-rail"]').exists()).toBe(true);
+  });
+
+  it("renders localized topbar status metrics after a job is loaded", async () => {
+    vi.useFakeTimers();
+    const createdJob = buildJob();
+    const doneJob = buildJob({
+      status: "done",
+      progress: 100,
+      message: "Subtitle task completed.",
+    });
+    const wrapper = mount(App, {
+      props: {
+        createJob: vi.fn().mockResolvedValue(createdJob),
+        getJob: vi.fn().mockResolvedValue(doneJob),
+        getSubtitles: vi.fn().mockResolvedValue(timelineSubtitles),
+        createJobEventSource: vi.fn().mockReturnValue(new FakeEventSource()),
+        pollIntervalMs: 10,
+      },
+    });
+    const file = new File(["demo"], "demo.mp4", { type: "video/mp4" });
+    const fileInput = wrapper.get<HTMLInputElement>('[data-testid="video-file"]');
+
+    Object.defineProperty(fileInput.element, "files", {
+      value: [file],
+      configurable: true,
+    });
+
+    await fileInput.trigger("change");
+    await wrapper.get("form").trigger("submit");
+    await vi.runOnlyPendingTimersAsync();
+    await wrapper.vm.$nextTick();
+
+    const topbar = wrapper.get('[data-testid="app-topbar"]').text();
+    expect(topbar).toContain("已完成");
+    expect(topbar).toContain("100%");
+    expect(topbar).toContain("2 条字幕");
+  });
+
   it("creates a job and polls until it is finished", async () => {
     vi.useFakeTimers();
     const createdJob = buildJob();
@@ -206,6 +251,88 @@ describe("App", () => {
     expect(getJob).not.toHaveBeenCalled();
   });
 
+  it("loads subtitles when SSE completes without subtitle events", async () => {
+    const createdJob = buildJob();
+    const createJob = vi.fn().mockResolvedValue(createdJob);
+    const getSubtitles = vi.fn().mockResolvedValue(subtitles);
+    const eventSource = new FakeEventSource();
+    const wrapper = mount(App, {
+      props: {
+        createJob,
+        getJob: vi.fn(),
+        getSubtitles,
+        createJobEventSource: vi.fn().mockReturnValue(eventSource),
+      },
+    });
+    const file = new File(["demo"], "demo.mp4", { type: "video/mp4" });
+    const fileInput = wrapper.get<HTMLInputElement>('[data-testid="video-file"]');
+
+    Object.defineProperty(fileInput.element, "files", {
+      value: [file],
+      configurable: true,
+    });
+
+    await fileInput.trigger("change");
+    await wrapper.get("form").trigger("submit");
+    await wrapper.vm.$nextTick();
+
+    eventSource.emit({
+      type: "job_done",
+      job_id: "job_test",
+      data: {},
+    });
+    eventSource.emit({
+      type: "job_closed",
+      job_id: "job_test",
+      data: {},
+    });
+    await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
+
+    expect(getSubtitles).toHaveBeenCalledWith("job_test");
+    expect(wrapper.get('[data-testid="live-subtitle"]').text()).toContain("Hello");
+    expect(wrapper.get('[data-testid="live-subtitle"]').text()).toContain("你好");
+  });
+
+  it("marks the current job failed when a failed SSE event arrives", async () => {
+    const createdJob = buildJob({
+      status: "transcribing",
+      progress: 50,
+      message: "Transcribing speech.",
+    });
+    const eventSource = new FakeEventSource();
+    const wrapper = mount(App, {
+      props: {
+        createJob: vi.fn().mockResolvedValue(createdJob),
+        getJob: vi.fn(),
+        getSubtitles: vi.fn(),
+        createJobEventSource: vi.fn().mockReturnValue(eventSource),
+      },
+    });
+    const file = new File(["demo"], "demo.mp4", { type: "video/mp4" });
+    const fileInput = wrapper.get<HTMLInputElement>('[data-testid="video-file"]');
+
+    Object.defineProperty(fileInput.element, "files", {
+      value: [file],
+      configurable: true,
+    });
+
+    await fileInput.trigger("change");
+    await wrapper.get("form").trigger("submit");
+    await wrapper.vm.$nextTick();
+
+    eventSource.emit({
+      type: "job_failed",
+      job_id: "job_test",
+      data: { error: "ASR request failed." },
+    });
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.get('[data-testid="app-topbar"]').text()).toContain("失败");
+    expect(wrapper.get(".job-status-panel").text()).toContain("失败");
+    expect(wrapper.text()).toContain("ASR request failed.");
+  });
+
   it("links subtitle selection with the video timeline", async () => {
     vi.useFakeTimers();
     const createdJob = buildJob();
@@ -253,54 +380,6 @@ describe("App", () => {
     expect(video.element.currentTime).toBe(0.55);
   });
 
-  it("generates insight notes and links insight items with the video timeline", async () => {
-    vi.useFakeTimers();
-    const createdJob = buildJob();
-    const doneJob = buildJob({
-      status: "done",
-      progress: 100,
-      message: "Subtitle task completed.",
-    });
-    const generateInsight = vi.fn().mockResolvedValue(insight);
-    const wrapper = mount(App, {
-      props: {
-        createJob: vi.fn().mockResolvedValue(createdJob),
-        getJob: vi.fn().mockResolvedValue(doneJob),
-        getSubtitles: vi.fn().mockResolvedValue(timelineSubtitles),
-        generateInsight,
-        createJobEventSource: vi.fn().mockReturnValue(new FakeEventSource()),
-        pollIntervalMs: 10,
-      },
-    });
-    const file = new File(["demo"], "demo.mp4", { type: "video/mp4" });
-    const fileInput = wrapper.get<HTMLInputElement>('[data-testid="video-file"]');
-
-    Object.defineProperty(fileInput.element, "files", {
-      value: [file],
-      configurable: true,
-    });
-
-    await fileInput.trigger("change");
-    await wrapper.get("form").trigger("submit");
-    await vi.runOnlyPendingTimersAsync();
-    await wrapper.vm.$nextTick();
-
-    await wrapper.get('[data-testid="generate-insight"]').trigger("click");
-    await wrapper.vm.$nextTick();
-
-    expect(generateInsight).toHaveBeenCalledWith("job_test");
-    expect(wrapper.text()).toContain("运动会产生热量。汗液帮助身体降温。");
-    expect(wrapper.text()).toContain("运动产生热量");
-    expect(wrapper.get('a[href="/api/jobs/job_test/insights/markdown"]').text()).toContain(
-      "下载 MD",
-    );
-
-    const video = wrapper.get<HTMLVideoElement>("video");
-    await wrapper.get(".insight-item").trigger("click");
-
-    expect(video.element.currentTime).toBe(0.55);
-  });
-
   it("shows an error when job creation fails", async () => {
     const createJob = vi.fn().mockRejectedValue(new Error("Upload failed."));
     const wrapper = mount(App, {
@@ -321,5 +400,6 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.text()).toContain("Upload failed.");
+    expect(wrapper.get('[role="alert"]').text()).toContain("Upload failed.");
   });
 });

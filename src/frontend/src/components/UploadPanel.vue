@@ -24,6 +24,23 @@ const correctText = ref(true);
 const subtitleMode = ref<SubtitleMode>("bilingual");
 
 const canSubmit = computed(() => selectedFile.value !== null && !props.isSubmitting);
+const selectedFileType = computed(() => selectedFile.value?.type || "未知类型");
+const selectedFileSize = computed(() =>
+  selectedFile.value ? formatFileSize(selectedFile.value.size) : "",
+);
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  const kib = bytes / 1024;
+  if (kib < 1024) {
+    return `${kib.toFixed(1)} KB`;
+  }
+
+  return `${(kib / 1024).toFixed(1)} MB`;
+}
 
 function handleFileChange(event: Event): void {
   const input = event.target as HTMLInputElement;
@@ -63,6 +80,12 @@ function submitUpload(): void {
         @change="handleFileChange"
       />
     </label>
+
+    <div v-if="selectedFile" class="selected-file-summary" data-testid="selected-file-summary">
+      <span>已选择</span>
+      <strong>{{ selectedFile.name }}</strong>
+      <span class="selected-file-meta">{{ selectedFileType }} · {{ selectedFileSize }}</span>
+    </div>
 
     <div class="field-grid">
       <label class="field">

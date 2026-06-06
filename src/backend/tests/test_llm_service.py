@@ -26,6 +26,7 @@ def test_enrich_subtitles_corrects_source_and_translates_target_for_bilingual_mo
     result = service.enrich_subtitles(
         cues,
         correct=True,
+        source_language="en",
         target_language="zh",
         subtitle_mode="bilingual",
     )
@@ -42,6 +43,7 @@ def test_enrich_subtitles_corrects_source_and_translates_target_for_bilingual_mo
     assert len(calls) == 2
     assert calls[0][1] == "custom-llm"
     assert "请纠正以下字幕文本" in calls[0][0]
+    assert "最终输出必须全部使用英文" in calls[0][0]
     assert "请处理以下字幕文本" in calls[1][0]
 
 
@@ -66,6 +68,7 @@ def test_enrich_subtitles_returns_original_cues_when_no_llm_work_is_requested():
     result = service.enrich_subtitles(
         cues,
         correct=False,
+        source_language="en",
         target_language="",
         subtitle_mode="source",
     )
@@ -103,6 +106,7 @@ def test_enrich_subtitles_calls_callback_for_each_enriched_cue():
     result = service.enrich_subtitles(
         cues,
         correct=True,
+        source_language="en",
         target_language="zh",
         subtitle_mode="bilingual",
         on_cue=emitted.append,

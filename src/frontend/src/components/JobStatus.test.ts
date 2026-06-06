@@ -51,6 +51,23 @@ describe("JobStatus", () => {
     expect(wrapper.get('[data-testid="job-progress"]').attributes("style")).toContain("width: 50%");
   });
 
+  it("renders task configuration details", () => {
+    const wrapper = mount(JobStatus, {
+      props: {
+        job: buildJob({
+          source_language: "en",
+          target_language: "zh",
+          subtitle_mode: "bilingual",
+          asr_model: "paraformer-v2",
+        }),
+      },
+    });
+
+    expect(wrapper.get('[data-testid="job-config-summary"]').text()).toContain("en → zh");
+    expect(wrapper.get('[data-testid="job-config-summary"]').text()).toContain("bilingual");
+    expect(wrapper.get('[data-testid="job-config-summary"]').text()).toContain("paraformer-v2");
+  });
+
   it("shows backend error when job failed", () => {
     const wrapper = mount(JobStatus, {
       props: {
