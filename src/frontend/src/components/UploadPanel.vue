@@ -64,6 +64,11 @@ function submitUpload(): void {
       />
     </label>
 
+    <div v-if="selectedFile" class="selected-file-summary" data-testid="selected-file-summary">
+      <span>已选择</span>
+      <strong>{{ selectedFile.name }}</strong>
+    </div>
+
     <div class="field-grid">
       <label class="field">
         <span>源语言</span>

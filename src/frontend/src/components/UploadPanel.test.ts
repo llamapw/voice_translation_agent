@@ -40,6 +40,21 @@ describe("UploadPanel", () => {
     ]);
   });
 
+  it("shows a summary for the selected file", async () => {
+    const wrapper = mount(UploadPanel);
+    const file = new File(["demo"], "demo.mp4", { type: "video/mp4" });
+    const fileInput = wrapper.get<HTMLInputElement>('[data-testid="video-file"]');
+
+    Object.defineProperty(fileInput.element, "files", {
+      value: [file],
+      configurable: true,
+    });
+
+    await fileInput.trigger("change");
+
+    expect(wrapper.get('[data-testid="selected-file-summary"]').text()).toContain("demo.mp4");
+  });
+
   it("shows busy state while uploading", () => {
     const wrapper = mount(UploadPanel, {
       props: {
