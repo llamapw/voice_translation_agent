@@ -230,27 +230,36 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="app-shell">
-    <section class="workspace">
-      <header class="workspace-header">
-        <p class="eyebrow">Subtitle workflow</p>
-        <h1>Voice Translation Agent</h1>
-        <p class="summary">Upload, transcribe, translate, and export subtitles from one focused workspace.</p>
-      </header>
+    <section class="app-workbench">
+      <header class="app-topbar" data-testid="app-topbar">
+        <div class="brand-block">
+          <p class="eyebrow">Subtitle workflow</p>
+          <h1>Voice Translation Agent</h1>
+          <p class="summary">Upload, transcribe, translate, and export subtitles from one focused workspace.</p>
+        </div>
 
-      <div class="workspace-grid">
-        <div class="control-column">
-          <UploadPanel :is-submitting="isSubmitting" @submit="handleUpload" />
+        <div class="topbar-status">
+          <span class="status-chip" :data-status="currentJob?.status ?? 'idle'">
+            {{ currentJob?.status ?? "idle" }}
+          </span>
           <p
             v-if="eventStreamState !== 'idle'"
-            class="stream-state"
+            class="stream-state topbar-stream-state"
             :data-state="eventStreamState"
           >
             {{ eventStreamState === "open" ? "正在实时接收字幕" : "实时连接已关闭" }}
           </p>
-          <p v-if="appError" class="error-message">{{ appError }}</p>
         </div>
+      </header>
 
-        <div class="result-column">
+      <p v-if="appError" class="error-message">{{ appError }}</p>
+
+      <div class="workbench-layout">
+        <aside class="control-rail" data-testid="control-rail">
+          <UploadPanel :is-submitting="isSubmitting" @submit="handleUpload" />
+        </aside>
+
+        <section class="preview-stage" data-testid="preview-stage">
           <JobStatus :job="currentJob" />
           <VideoPlayer
             ref="videoPlayer"
@@ -278,13 +287,16 @@ onBeforeUnmount(() => {
               等待实时字幕
             </div>
           </section>
+        </section>
+
+        <aside class="subtitle-rail" data-testid="subtitle-rail">
           <SubtitlePanel
             :cues="subtitles"
             :srt-url="currentJob?.srt_download_url ?? null"
             :active-cue-index="activeSubtitle?.index ?? null"
             @select="handleSubtitleSelect"
           />
-        </div>
+        </aside>
       </div>
     </section>
   </main>

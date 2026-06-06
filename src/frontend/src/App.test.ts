@@ -84,6 +84,15 @@ describe("App", () => {
     expect(wrapper.text()).toContain("Voice Translation Agent");
   });
 
+  it("renders the workbench layout regions", () => {
+    const wrapper = mount(App);
+
+    expect(wrapper.find('[data-testid="app-topbar"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="control-rail"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="preview-stage"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="subtitle-rail"]').exists()).toBe(true);
+  });
+
   it("creates a job and polls until it is finished", async () => {
     vi.useFakeTimers();
     const createdJob = buildJob();
