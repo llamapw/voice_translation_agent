@@ -15,3 +15,7 @@ AGENTS.md
 # 不上传运行时任务产物
 src/storage/jobs/
 
+# 前端依赖和构建产物
+node_modules/
+dist/
+
