@@ -2,8 +2,9 @@ import json
 from pathlib import Path
 from typing import List, Optional
 
+from app.agents.insight_agent import InsightAgent, insight_agent
 from app.core.paths import build_job_paths
-from app.models.insight import InsightItem, InsightRead
+from app.models.insight import InsightRead
 from app.models.subtitle import SubtitleCue
 from app.utils.insight_markdown import render_insight_markdown
 
@@ -17,6 +18,9 @@ class InsightNotFoundError(FileNotFoundError):
 
 
 class InsightService:
+    def __init__(self, agent: InsightAgent = insight_agent) -> None:
+        self._agent = agent
+
     def read_insight(
         self,
         job_id: str,
@@ -39,12 +43,7 @@ class InsightService:
             raise InsightSourceNotFoundError(str(paths.subtitles_json))
 
         cues = self._read_subtitles(paths.subtitles_json)
-        insight = InsightRead(
-            job_id=job_id,
-            summary=self._build_summary(cues),
-            items=self._build_items(cues),
-            markdown_url="/api/jobs/{0}/insights/markdown".format(job_id),
-        )
+        insight = self._agent.generate(job_id, cues)
 
         paths.root.mkdir(parents=True, exist_ok=True)
         paths.insight_json.write_text(
@@ -61,24 +60,6 @@ class InsightService:
     def _read_subtitles(self, path: Path) -> List[SubtitleCue]:
         raw_cues = json.loads(path.read_text(encoding="utf-8"))
         return [SubtitleCue.model_validate(raw_cue) for raw_cue in raw_cues]
-
-    def _build_summary(self, cues: List[SubtitleCue]) -> str:
-        summary_parts = [cue.target_text.strip() for cue in cues[:3] if cue.target_text.strip()]
-        return " ".join(summary_parts)
-
-    def _build_items(self, cues: List[SubtitleCue]) -> List[InsightItem]:
-        return [
-            InsightItem(
-                id="key_point_{0}".format(cue.index),
-                type="key_point",
-                title="片段 {0}".format(cue.index),
-                content=cue.target_text,
-                start=cue.start,
-                end=cue.end,
-                source_cue_indexes=[cue.index],
-            )
-            for cue in cues
-        ]
 
 
 insight_service = InsightService()
