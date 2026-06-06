@@ -85,6 +85,7 @@ h1 {
 .upload-panel,
 .job-status-panel,
 .video-panel,
+.live-subtitle-panel,
 .subtitle-panel {
   display: grid;
   gap: 18px;
@@ -295,6 +296,36 @@ h2 {
   max-height: 420px;
   border-radius: 6px;
   background: #111827;
+}
+
+.live-subtitle-panel {
+  gap: 14px;
+  border-color: #cfe0d6;
+  background: #fbfefc;
+}
+
+.live-subtitle-body {
+  display: grid;
+  gap: 8px;
+  min-height: 92px;
+  align-content: center;
+  padding: 16px;
+  border: 1px solid #d8e7dd;
+  border-radius: 6px;
+  background: #f4fbf6;
+}
+
+.live-subtitle-source,
+.live-subtitle-target {
+  margin: 0;
+  color: #172033;
+  font-size: 18px;
+  line-height: 1.55;
+}
+
+.live-subtitle-target {
+  color: #1f5d66;
+  font-weight: 800;
 }
 
 .download-link,

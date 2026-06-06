@@ -54,8 +54,17 @@ def run_subtitle_job(
                     progress=50,
                     message="Transcribing speech.",
                 )
-            )
-        cues = asr_service.transcribe(paths.audio_wav)
+        )
+        cues = asr_service.transcribe(
+            paths.audio_wav,
+            on_cue=(
+                lambda cue: event_service.publish(
+                    JobEvent.subtitle_partial(job_id=job_id, cue=cue)
+                )
+                if event_service is not None
+                else None
+            ),
+        )
 
         job = job_service.update_job(
             job_id,

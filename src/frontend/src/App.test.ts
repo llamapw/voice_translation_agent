@@ -111,6 +111,8 @@ describe("App", () => {
     expect(getSubtitles).toHaveBeenCalledWith("job_test");
     expect(wrapper.text()).toContain("已完成");
     expect(wrapper.text()).toContain("Subtitle task completed.");
+    expect(wrapper.get('[data-testid="live-subtitle"]').text()).toContain("Hello");
+    expect(wrapper.get('[data-testid="live-subtitle"]').text()).toContain("你好");
     expect(wrapper.text()).toContain("Hello");
     expect(wrapper.text()).toContain("你好");
     expect(wrapper.get("video").attributes("src")).toBe("/api/jobs/job_test/video");
@@ -164,6 +166,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(createJobEventSource).toHaveBeenCalledWith("job_test");
+    expect(wrapper.get('[data-testid="live-subtitle"]').text()).toContain("Hello");
+    expect(wrapper.get('[data-testid="live-subtitle"]').text()).toContain("你好");
     expect(wrapper.text()).toContain("Hello");
     expect(wrapper.text()).toContain("你好");
     expect(wrapper.text()).toContain("实时连接已关闭");

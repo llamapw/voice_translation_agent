@@ -39,6 +39,7 @@ const props = withDefaults(
 
 const currentJob = ref<JobRead | null>(null);
 const subtitles = ref<SubtitleCue[]>([]);
+const liveSubtitle = ref<SubtitleCue | null>(null);
 const isSubmitting = ref(false);
 const appError = ref<string | null>(null);
 const eventStreamState = ref<"idle" | "open" | "closed">("idle");
@@ -62,7 +63,9 @@ function closeEventSource(): void {
 
 async function loadSubtitles(jobId: string): Promise<void> {
   try {
-    subtitles.value = await props.getSubtitles(jobId);
+    const loadedSubtitles = await props.getSubtitles(jobId);
+    subtitles.value = loadedSubtitles;
+    liveSubtitle.value = loadedSubtitles[loadedSubtitles.length - 1] ?? null;
   } catch (error) {
     appError.value = error instanceof Error ? error.message : "字幕加载失败。";
   }
@@ -83,6 +86,7 @@ async function updateJob(job: JobRead): Promise<void> {
 }
 
 function appendSubtitle(cue: SubtitleCue): void {
+  liveSubtitle.value = cue;
   const existingIndex = subtitles.value.findIndex((item) => item.index === cue.index);
   if (existingIndex >= 0) {
     subtitles.value.splice(existingIndex, 1, cue);
@@ -182,6 +186,7 @@ async function handleUpload(input: CreateJobInput): Promise<void> {
 
   try {
     subtitles.value = [];
+    liveSubtitle.value = null;
     const job = await props.createJob(input);
     await updateJob(job);
 
@@ -230,6 +235,23 @@ onBeforeUnmount(() => {
             :video-url="currentJob?.video_url ?? null"
             :title="currentJob?.original_filename ?? null"
           />
+          <section class="live-subtitle-panel" data-testid="live-subtitle">
+            <div class="panel-heading">
+              <h2>实时字幕</h2>
+            </div>
+            <div v-if="liveSubtitle" class="live-subtitle-body">
+              <p class="live-subtitle-source">{{ liveSubtitle.source_text }}</p>
+              <p
+                v-if="liveSubtitle.target_text && liveSubtitle.target_text !== liveSubtitle.source_text"
+                class="live-subtitle-target"
+              >
+                {{ liveSubtitle.target_text }}
+              </p>
+            </div>
+            <div v-else class="empty-state">
+              等待实时字幕
+            </div>
+          </section>
           <SubtitlePanel
             :cues="subtitles"
             :srt-url="currentJob?.srt_download_url ?? null"
