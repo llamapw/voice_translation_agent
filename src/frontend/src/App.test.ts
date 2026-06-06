@@ -286,6 +286,47 @@ describe("App", () => {
     expect(liveSubtitleText).not.toContain("Hello");
   });
 
+  it("shows a translation pending state when target text is not ready", async () => {
+    const createdJob = buildJob({ subtitle_mode: "target" });
+    const eventSource = new FakeEventSource();
+    const wrapper = mount(App, {
+      props: {
+        createJob: vi.fn().mockResolvedValue(createdJob),
+        getJob: vi.fn(),
+        getSubtitles: vi.fn(),
+        createJobEventSource: vi.fn().mockReturnValue(eventSource),
+      },
+    });
+    const file = new File(["demo"], "demo.mp4", { type: "video/mp4" });
+    const fileInput = wrapper.get<HTMLInputElement>('[data-testid="video-file"]');
+
+    Object.defineProperty(fileInput.element, "files", {
+      value: [file],
+      configurable: true,
+    });
+
+    await fileInput.trigger("change");
+    await wrapper.get("form").trigger("submit");
+    await wrapper.vm.$nextTick();
+
+    eventSource.emit({
+      type: "subtitle_partial",
+      job_id: "job_test",
+      data: {
+        cue: {
+          ...subtitles[0],
+          target_text: "Hello",
+          display_text: "Hello",
+        },
+      },
+    });
+    await wrapper.vm.$nextTick();
+
+    const liveSubtitleText = wrapper.get('[data-testid="live-subtitle"]').text();
+    expect(liveSubtitleText).toContain("正在翻译...");
+    expect(liveSubtitleText).not.toContain("Hello");
+  });
+
   it("loads subtitles when SSE completes without subtitle events", async () => {
     const createdJob = buildJob();
     const createJob = vi.fn().mockResolvedValue(createdJob);
