@@ -41,12 +41,38 @@ class FakeASRService:
         return cues
 
 
+class StreamingFakeASRService:
+    def __init__(self):
+        self.calls = []
+
+    def transcribe(self, audio_path, on_cue=None):
+        self.calls.append((audio_path, on_cue))
+        cue = SubtitleCue(
+            index=1,
+            start=0.0,
+            end=2.0,
+            source_text="helo world",
+            target_text="helo world",
+        )
+        if on_cue is not None:
+            on_cue(cue)
+        return [cue]
+
+
 class FakeLLMService:
     def __init__(self):
         self.calls = []
 
-    def enrich_subtitles(self, cues, correct, target_language, subtitle_mode, on_cue=None):
-        self.calls.append((cues, correct, target_language, subtitle_mode, on_cue))
+    def enrich_subtitles(
+        self,
+        cues,
+        correct,
+        source_language,
+        target_language,
+        subtitle_mode,
+        on_cue=None,
+    ):
+        self.calls.append((cues, correct, source_language, target_language, subtitle_mode, on_cue))
         enriched = [
             SubtitleCue(
                 index=1,
@@ -158,7 +184,7 @@ def test_run_subtitle_job_processes_video_with_injected_services(tmp_path):
     assert updated.progress == 100
     assert media_service.calls == [(paths.input_video, paths.audio_wav)]
     assert asr_service.calls == [paths.audio_wav]
-    assert llm_service.calls[0][1:4] == (True, "zh", "bilingual")
+    assert llm_service.calls[0][1:5] == (True, "en", "zh", "bilingual")
     assert paths.audio_wav.read_bytes() == b"fake audio"
     assert paths.subtitles_json.exists()
     assert paths.output_srt.exists()
@@ -255,7 +281,63 @@ def test_run_subtitle_job_publishes_enriched_cues_to_realtime_stream(tmp_path):
     assert [event.data["cue"]["target_text"] for event in subtitle_events] == ["你好，世界。"]
 
 
-def test_run_subtitle_job_passes_streaming_callback_to_llm(tmp_path):
+def test_run_subtitle_job_streams_translated_cues_during_asr(tmp_path):
+    job_service = JobService()
+    subtitle_service = SubtitleService()
+    media_service = FakeMediaService()
+    asr_service = StreamingFakeASRService()
+    llm_service = FakeLLMService()
+    event_service = JobEventService()
+    job = job_service.create_job(
+        options=JobCreateOptions(
+            target_language="zh",
+            correct=True,
+            subtitle_mode="bilingual",
+        ),
+        original_filename="input.mp4",
+    )
+    paths = build_job_paths(job.id, storage_root=tmp_path)
+    paths.input_video.parent.mkdir(parents=True, exist_ok=True)
+    paths.input_video.write_bytes(b"fake video")
+
+    run_subtitle_job(
+        job_id=job.id,
+        paths=paths,
+        job_service=job_service,
+        media_service=media_service,
+        asr_service=asr_service,
+        llm_service=llm_service,
+        subtitle_service=subtitle_service,
+        event_service=event_service,
+    )
+
+    events = []
+    while True:
+        event = event_service.next_event(job.id, timeout=0.01)
+        if event is None:
+            break
+        events.append(event)
+        if event.type == JobEventType.job_closed:
+            break
+
+    first_subtitle_index = next(
+        index for index, event in enumerate(events) if event.type == JobEventType.subtitle_partial
+    )
+    correcting_status_index = next(
+        index
+        for index, event in enumerate(events)
+        if event.type == JobEventType.job_status
+        and event.data["status"] == JobStatus.correcting.value
+    )
+    first_subtitle = events[first_subtitle_index]
+
+    assert asr_service.calls[0][1] is not None
+    assert first_subtitle_index < correcting_status_index
+    assert first_subtitle.data["cue"]["source_text"] == "Hello, world."
+    assert first_subtitle.data["cue"]["target_text"] == "你好，世界。"
+
+
+def test_run_subtitle_job_passes_streaming_callback_to_asr(tmp_path):
     job_service = JobService()
     subtitle_service = SubtitleService()
     media_service = FakeMediaService()
@@ -278,7 +360,7 @@ def test_run_subtitle_job_passes_streaming_callback_to_llm(tmp_path):
         event_service=event_service,
     )
 
-    assert llm_service.calls[0][4] is not None
+    assert asr_service.on_cue is not None
 
 
 def test_run_subtitle_job_marks_job_failed_when_processing_raises(tmp_path):

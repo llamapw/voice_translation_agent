@@ -55,7 +55,27 @@ def run_subtitle_job(
                     message="Transcribing speech.",
                 )
         )
-        cues = asr_service.transcribe(paths.audio_wav)
+        job = job_service.get_job(job_id)
+
+        def publish_enriched_cue(cue: SubtitleCue) -> None:
+            if event_service is None:
+                return
+            enriched = llm_service.enrich_subtitles(
+                [cue],
+                correct=job.correct,
+                source_language=job.source_language,
+                target_language=job.target_language,
+                subtitle_mode=job.subtitle_mode,
+            )
+            if enriched:
+                event_service.publish(
+                    JobEvent.subtitle_partial(job_id=job_id, cue=enriched[0])
+                )
+
+        cues = asr_service.transcribe(
+            paths.audio_wav,
+            on_cue=publish_enriched_cue if event_service is not None else None,
+        )
 
         job = job_service.update_job(
             job_id,
@@ -75,15 +95,9 @@ def run_subtitle_job(
         enriched_cues = llm_service.enrich_subtitles(
             cues,
             correct=job.correct,
+            source_language=job.source_language,
             target_language=job.target_language,
             subtitle_mode=job.subtitle_mode,
-            on_cue=(
-                lambda cue: event_service.publish(
-                    JobEvent.subtitle_partial(job_id=job_id, cue=cue)
-                )
-                if event_service is not None
-                else None
-            ),
         )
 
         job_service.update_job(
