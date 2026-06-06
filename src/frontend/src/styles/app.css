@@ -330,11 +330,13 @@ h2 {
 }
 
 .download-link,
-.download-disabled {
+.download-disabled,
+.panel-action-button {
   display: inline-flex;
   align-items: center;
   min-height: 36px;
   padding: 7px 12px;
+  border: 0;
   border-radius: 6px;
   font-size: 14px;
   font-weight: 800;
@@ -342,9 +344,19 @@ h2 {
   white-space: nowrap;
 }
 
-.download-link {
+.download-link,
+.panel-action-button {
   background: #1f6f78;
   color: #ffffff;
+}
+
+.panel-action-button {
+  cursor: pointer;
+}
+
+.panel-action-button:disabled {
+  background: #9aabb8;
+  cursor: not-allowed;
 }
 
 .download-disabled {

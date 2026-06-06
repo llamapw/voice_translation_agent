@@ -7,9 +7,11 @@ import { formatCueTime } from "../types/subtitle";
 const props = defineProps<{
   insight: InsightRead | null;
   isLoading: boolean;
+  canGenerate: boolean;
 }>();
 
 defineEmits<{
+  generate: [];
   "select-item": [item: InsightItem];
 }>();
 
@@ -46,6 +48,16 @@ const groupedItems = computed(() => {
       >
         下载 MD
       </a>
+      <button
+        v-else-if="canGenerate"
+        class="panel-action-button"
+        data-testid="generate-insight"
+        type="button"
+        :disabled="isLoading"
+        @click="$emit('generate')"
+      >
+        生成知识笔记
+      </button>
       <span v-else class="download-disabled">MD 尚未生成</span>
     </div>
 

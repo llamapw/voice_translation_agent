@@ -36,6 +36,7 @@ describe("InsightPanel", () => {
       props: {
         insight: null,
         isLoading: false,
+        canGenerate: false,
       },
     });
 
@@ -47,10 +48,25 @@ describe("InsightPanel", () => {
       props: {
         insight: null,
         isLoading: true,
+        canGenerate: true,
       },
     });
 
     expect(wrapper.text()).toContain("正在生成知识笔记");
+  });
+
+  it("emits generate when the generate button is clicked", async () => {
+    const wrapper = mount(InsightPanel, {
+      props: {
+        insight: null,
+        isLoading: false,
+        canGenerate: true,
+      },
+    });
+
+    await wrapper.get("button").trigger("click");
+
+    expect(wrapper.emitted("generate")).toEqual([[]]);
   });
 
   it("renders summary, grouped items, timestamps, and markdown download", () => {
@@ -58,6 +74,7 @@ describe("InsightPanel", () => {
       props: {
         insight,
         isLoading: false,
+        canGenerate: true,
       },
     });
 
@@ -76,6 +93,7 @@ describe("InsightPanel", () => {
       props: {
         insight,
         isLoading: false,
+        canGenerate: true,
       },
     });
 
