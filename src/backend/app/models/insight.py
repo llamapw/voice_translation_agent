@@ -11,6 +11,8 @@ class InsightItem(BaseModel):
     type: InsightItemType
     title: str
     content: str
+    source_term: Optional[str] = None
+    target_term: Optional[str] = None
     start: float = Field(ge=0)
     end: float = Field(ge=0)
     source_cue_indexes: List[int] = Field(default_factory=list)

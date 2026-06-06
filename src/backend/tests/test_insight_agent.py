@@ -90,10 +90,12 @@ def test_langchain_insight_agent_generates_insight_from_chat_model_json():
           "summary": "视频解释运动时的热量产生。",
           "items": [
             {
-              "id": "key_point_1",
-              "type": "key_point",
-              "title": "运动产生热量",
-              "content": "运动时大部分能量会转化为热量。",
+              "id": "term_1",
+              "type": "term",
+              "title": "热应激",
+              "content": "运动时身体承受的热量压力。",
+              "source_term": "heat stress",
+              "target_term": "热应激",
               "start": 0.55,
               "end": 13.51,
               "source_cue_indexes": [1]
@@ -107,7 +109,9 @@ def test_langchain_insight_agent_generates_insight_from_chat_model_json():
 
     assert insight.job_id == "job_test"
     assert insight.summary == "视频解释运动时的热量产生。"
-    assert insight.items[0].title == "运动产生热量"
+    assert insight.items[0].title == "热应激"
+    assert insight.items[0].source_term == "heat stress"
+    assert insight.items[0].target_term == "热应激"
     assert insight.items[0].source_cue_indexes == [1]
     assert insight.markdown_url == "/api/jobs/job_test/insights/markdown"
     assert "Exercise produces heat." in chat_model.messages[1]["content"]
@@ -122,7 +126,10 @@ def test_langchain_insight_agent_prompt_requires_term_items():
     user_prompt = chat_model.messages[1]["content"]
     assert "必须提取术语" in user_prompt
     assert '"type": "term"' in user_prompt
-    assert "术语 title 使用术语原词" in user_prompt
+    assert '"source_term"' in user_prompt
+    assert '"target_term"' in user_prompt
+    assert "source_term 必须使用原文字幕中的术语原词" in user_prompt
+    assert "target_term 必须使用对应中文译名" in user_prompt
 
 
 def test_langchain_insight_agent_accepts_markdown_fenced_json():

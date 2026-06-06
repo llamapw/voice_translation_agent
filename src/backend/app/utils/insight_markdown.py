@@ -19,6 +19,19 @@ def format_markdown_time(seconds: float) -> str:
     return "{0:02}:{1:02}.{2:03}".format(minutes, secs, millis)
 
 
+def format_insight_item_title(item) -> str:
+    if item.type != "term":
+        return item.title
+
+    source_term = (item.source_term or "").strip()
+    target_term = (item.target_term or item.title or "").strip()
+
+    if source_term and target_term and source_term != target_term:
+        return "{0} / {1}".format(source_term, target_term)
+
+    return source_term or target_term or item.title
+
+
 def render_insight_markdown(insight: InsightRead) -> str:
     lines = [
         "# 视频知识笔记",
@@ -38,7 +51,10 @@ def render_insight_markdown(insight: InsightRead) -> str:
         lines.extend(["", "## {0}".format(ITEM_TYPE_TITLES[item_type]), ""])
         for item in items:
             lines.append(
-                "- [{0}] **{1}**".format(format_markdown_time(item.start), item.title)
+                "- [{0}] **{1}**".format(
+                    format_markdown_time(item.start),
+                    format_insight_item_title(item),
+                )
             )
             lines.append("  {0}".format(item.content))
             if item.source_cue_indexes:

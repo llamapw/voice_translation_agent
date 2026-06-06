@@ -44,6 +44,22 @@ def test_insight_item_defaults_source_cue_indexes_to_empty_list():
     assert item.source_cue_indexes == []
 
 
+def test_term_insight_item_can_store_source_and_target_terms():
+    item = InsightItem(
+        id="term_1",
+        type="term",
+        title="热应激",
+        content="身体热量压力相关概念。",
+        start=0.55,
+        end=13.51,
+        source_term="heat stress",
+        target_term="热应激",
+    )
+
+    assert item.source_term == "heat stress"
+    assert item.target_term == "热应激"
+
+
 @pytest.mark.parametrize(
     ("start", "end"),
     [

@@ -19,8 +19,10 @@ def test_render_insight_markdown_includes_summary_and_timestamped_items():
             InsightItem(
                 id="term_1",
                 type="term",
-                title="Compensable heat stress",
-                content="A heat state where the body can dissipate heat quickly enough.",
+                title="可补偿热应激",
+                content="身体可以及时散热的状态。",
+                source_term="Compensable heat stress",
+                target_term="可补偿热应激",
                 start=4.0,
                 end=10.0,
             ),
@@ -38,4 +40,5 @@ def test_render_insight_markdown_includes_summary_and_timestamped_items():
     assert "  Most exercise energy is transformed into heat." in markdown
     assert "  来源字幕: 1" in markdown
     assert "## 术语" in markdown
-    assert "- [00:04.000] **Compensable heat stress**" in markdown
+    assert "- [00:04.000] **Compensable heat stress / 可补偿热应激**" in markdown
+    assert "  身体可以及时散热的状态。" in markdown
