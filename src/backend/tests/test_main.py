@@ -17,7 +17,7 @@ def test_health_endpoint_returns_service_status():
 
 
 def test_app_registers_jobs_api_router_and_uses_configured_storage(tmp_path):
-    client = TestClient(create_app(storage_root=tmp_path))
+    client = TestClient(create_app(storage_root=tmp_path, use_real_worker=False))
 
     response = client.post(
         "/api/jobs",
@@ -32,7 +32,7 @@ def test_app_registers_jobs_api_router_and_uses_configured_storage(tmp_path):
 
 
 def test_app_upload_job_generates_mock_subtitles(tmp_path):
-    client = TestClient(create_app(storage_root=tmp_path))
+    client = TestClient(create_app(storage_root=tmp_path, use_real_worker=False))
 
     created = client.post(
         "/api/jobs",

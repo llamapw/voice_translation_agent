@@ -2,7 +2,8 @@ import subprocess
 
 import pytest
 
-from app.utils.ffmpeg import FFmpegError, extract_audio_to_wav
+from app.utils import ffmpeg
+from app.utils.ffmpeg import FFmpegError, extract_audio_to_wav, resolve_ffmpeg_binary
 
 
 def test_extract_audio_to_wav_runs_expected_ffmpeg_command(tmp_path):
@@ -65,3 +66,28 @@ def test_extract_audio_to_wav_raises_error_when_ffmpeg_fails(tmp_path):
         extract_audio_to_wav(input_video, output_audio, runner=fake_run)
 
     assert "ffmpeg failed" in str(error.value)
+
+
+def test_resolve_ffmpeg_binary_falls_back_to_imageio_ffmpeg(monkeypatch):
+    monkeypatch.setattr(ffmpeg.shutil, "which", lambda binary: None)
+
+    class FakeImageioFFmpeg:
+        @staticmethod
+        def get_ffmpeg_exe():
+            return "embedded-ffmpeg.exe"
+
+    result = resolve_ffmpeg_binary(
+        "ffmpeg",
+        imageio_ffmpeg_module=FakeImageioFFmpeg,
+    )
+
+    assert result == "embedded-ffmpeg.exe"
+
+
+def test_resolve_ffmpeg_binary_raises_clear_error_when_unavailable(monkeypatch):
+    monkeypatch.setattr(ffmpeg.shutil, "which", lambda binary: None)
+
+    with pytest.raises(FFmpegError) as error:
+        resolve_ffmpeg_binary("ffmpeg", imageio_ffmpeg_module=None)
+
+    assert "FFmpeg executable not found" in str(error.value)

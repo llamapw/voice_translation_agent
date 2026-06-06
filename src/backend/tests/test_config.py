@@ -1,8 +1,31 @@
 from app.core.config import Settings
 
 
-def test_settings_provides_default_runtime_values():
-    settings = Settings()
+def clear_settings_environment(monkeypatch):
+    for name in [
+        "APP_NAME",
+        "APP_VERSION",
+        "CORS_ORIGINS",
+        "DEFAULT_SOURCE_LANGUAGE",
+        "DEFAULT_TARGET_LANGUAGE",
+        "FFMPEG_BINARY",
+        "ASR_MODEL",
+        "DASHSCOPE_WEBSOCKET_URL",
+        "DASHSCOPE_API_KEY",
+        "LLM_MODEL",
+        "LLM_BASE_URL",
+        "LLM_API_KEY",
+        "QINIU_AI_API_KEY",
+        "qiniu_ai_api_key",
+        "USE_REAL_WORKER",
+    ]:
+        monkeypatch.delenv(name, raising=False)
+
+
+def test_settings_provides_default_runtime_values(monkeypatch):
+    clear_settings_environment(monkeypatch)
+
+    settings = Settings(env_file=None)
 
     assert settings.app_name == "voice_translation_agent"
     assert settings.app_version == "0.1.0"
@@ -20,6 +43,7 @@ def test_settings_provides_default_runtime_values():
 
 
 def test_settings_reads_environment_overrides(monkeypatch):
+    clear_settings_environment(monkeypatch)
     monkeypatch.setenv("APP_NAME", "custom_service")
     monkeypatch.setenv("APP_VERSION", "1.2.3")
     monkeypatch.setenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000")
@@ -55,8 +79,7 @@ def test_settings_reads_environment_overrides(monkeypatch):
 
 
 def test_settings_reads_values_from_env_file(tmp_path, monkeypatch):
-    monkeypatch.delenv("APP_NAME", raising=False)
-    monkeypatch.delenv("USE_REAL_WORKER", raising=False)
+    clear_settings_environment(monkeypatch)
     env_file = tmp_path / ".env"
     env_file.write_text(
         "APP_NAME=file_service\n"
@@ -73,6 +96,7 @@ def test_settings_reads_values_from_env_file(tmp_path, monkeypatch):
 
 
 def test_environment_variables_override_env_file(tmp_path, monkeypatch):
+    clear_settings_environment(monkeypatch)
     env_file = tmp_path / ".env"
     env_file.write_text("APP_NAME=file_service\n", encoding="utf-8")
     monkeypatch.setenv("APP_NAME", "environment_service")

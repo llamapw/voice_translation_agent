@@ -11,15 +11,19 @@ from app.services.media_service import media_service
 from app.services.subtitle_service import subtitle_service
 
 
-def create_app(storage_root: Optional[Path] = None) -> FastAPI:
+def create_app(
+    storage_root: Optional[Path] = None,
+    use_real_worker: Optional[bool] = None,
+) -> FastAPI:
     created_app = FastAPI(title="voice_translation_agent")
+    resolved_use_real_worker = settings.use_real_worker if use_real_worker is None else use_real_worker
     created_app.include_router(
         create_jobs_router(
             job_service=job_service,
             media_service=media_service,
             subtitle_service=subtitle_service,
             storage_root=storage_root,
-            use_real_worker=settings.use_real_worker,
+            use_real_worker=resolved_use_real_worker,
         ),
         prefix="/api/jobs",
     )
