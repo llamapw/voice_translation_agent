@@ -53,6 +53,9 @@ const isSubmitting = ref(false);
 const isGeneratingInsight = ref(false);
 const appError = ref<string | null>(null);
 const eventStreamState = ref<"idle" | "open" | "closed">("idle");
+const activeResultTab = ref<"subtitles" | "insight">("subtitles");
+const isResultRailCollapsed = ref(false);
+const resultRailWidth = ref(430);
 let pollTimer: number | null = null;
 let eventSource: EventSource | null = null;
 
@@ -106,6 +109,54 @@ const topbarProgressLabel = computed(() => `${currentJob.value?.progress ?? 0}%`
 const topbarSubtitleCountLabel = computed(() => `${subtitles.value.length} 条字幕`);
 const canGenerateInsight = computed(() => currentJob.value?.status === "done");
 const glossaryTerms = computed(() => buildInsightTermNames(insight.value?.items ?? []));
+const workbenchLayoutStyle = computed(() => ({
+  "--result-rail-width": isResultRailCollapsed.value ? "56px" : `${resultRailWidth.value}px`,
+}));
+
+function clampResultRailWidth(width: number): number {
+  return Math.min(620, Math.max(360, width));
+}
+
+function setResultRailCollapsed(collapsed: boolean): void {
+  isResultRailCollapsed.value = collapsed;
+}
+
+function handleResultRailResize(event: PointerEvent): void {
+  if (isResultRailCollapsed.value) {
+    return;
+  }
+
+  const workbench = document.querySelector(".app-workbench");
+  const rightEdge =
+    workbench instanceof HTMLElement ? workbench.getBoundingClientRect().right : window.innerWidth;
+  const nextWidth = rightEdge - event.clientX;
+  resultRailWidth.value = clampResultRailWidth(nextWidth);
+}
+
+function stopResultRailResize(): void {
+  window.removeEventListener("pointermove", handleResultRailResize);
+  window.removeEventListener("pointerup", stopResultRailResize);
+}
+
+function startResultRailResize(event: PointerEvent): void {
+  if (isResultRailCollapsed.value) {
+    return;
+  }
+
+  event.preventDefault();
+  window.addEventListener("pointermove", handleResultRailResize);
+  window.addEventListener("pointerup", stopResultRailResize);
+}
+
+function handleResultRailResizeKeydown(event: KeyboardEvent): void {
+  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
+    return;
+  }
+
+  event.preventDefault();
+  const delta = event.key === "ArrowLeft" ? 24 : -24;
+  resultRailWidth.value = clampResultRailWidth(resultRailWidth.value + delta);
+}
 
 function clearPollTimer(): void {
   if (pollTimer !== null) {
@@ -312,6 +363,7 @@ async function handleUpload(input: CreateJobInput): Promise<void> {
 onBeforeUnmount(() => {
   clearPollTimer();
   closeEventSource();
+  stopResultRailResize();
 });
 </script>
 
@@ -320,10 +372,25 @@ onBeforeUnmount(() => {
     <section class="app-workbench">
       <header class="app-topbar" data-testid="app-topbar">
         <div class="brand-block">
-          <p class="eyebrow">Subtitle workflow</p>
-          <h1>Voice Translation Agent</h1>
-          <p class="summary">Upload, transcribe, translate, and export subtitles from one focused workspace.</p>
+          <p class="eyebrow">Voice Translation Agent</p>
+          <h1>实时字幕工作台</h1>
+          <p class="summary">上传视频、同步字幕、沉淀知识笔记，在一个界面里完成从听懂到复盘。</p>
         </div>
+
+        <ol class="workflow-steps" data-testid="workflow-steps" aria-label="工作流阶段">
+          <li>
+            <span>01</span>
+            <strong>导入</strong>
+          </li>
+          <li>
+            <span>02</span>
+            <strong>转写翻译</strong>
+          </li>
+          <li>
+            <span>03</span>
+            <strong>知识整理</strong>
+          </li>
+        </ol>
 
         <div class="topbar-status">
           <div class="topbar-metric">
@@ -352,7 +419,11 @@ onBeforeUnmount(() => {
 
       <p v-if="appError" class="error-message" role="alert">{{ appError }}</p>
 
-      <div class="workbench-layout">
+      <div
+        class="workbench-layout"
+        :data-result-rail-collapsed="isResultRailCollapsed"
+        :style="workbenchLayoutStyle"
+      >
         <aside class="control-rail" data-testid="control-rail">
           <UploadPanel :is-submitting="isSubmitting" @submit="handleUpload" />
         </aside>
@@ -391,22 +462,99 @@ onBeforeUnmount(() => {
           </section>
         </section>
 
-        <aside class="subtitle-rail" data-testid="subtitle-rail">
-          <SubtitlePanel
-            :cues="subtitles"
-            :srt-url="currentJob?.srt_download_url ?? null"
-            :active-cue-index="activeSubtitle?.index ?? null"
-            :terms="glossaryTerms"
-            @select="handleSubtitleSelect"
+        <aside
+          class="subtitle-rail"
+          data-testid="subtitle-rail"
+          :data-collapsed="isResultRailCollapsed"
+        >
+          <button
+            v-if="isResultRailCollapsed"
+            class="result-rail-expand"
+            data-testid="result-rail-expand"
+            type="button"
+            aria-label="展开结果边栏"
+            @click="setResultRailCollapsed(false)"
+          >
+            结果
+            <span>{{ subtitles.length }}</span>
+          </button>
+
+          <div
+            v-if="!isResultRailCollapsed"
+            class="result-resize-handle"
+            data-testid="result-resize-handle"
+            role="separator"
+            aria-label="调整结果边栏宽度"
+            aria-orientation="vertical"
+            tabindex="0"
+            @pointerdown="startResultRailResize"
+            @keydown="handleResultRailResizeKeydown"
           />
-          <InsightPanel
-            :insight="insight"
-            :is-loading="isGeneratingInsight"
-            :can-generate="canGenerateInsight"
-            :active-item-id="activeInsightItem?.id ?? null"
-            @generate="handleGenerateInsight"
-            @select-item="handleInsightSelect"
-          />
+
+          <section v-if="!isResultRailCollapsed" class="result-workspace">
+            <div class="result-rail-header">
+              <div>
+                <span>结果边栏</span>
+                <strong>{{ activeResultTab === "subtitles" ? "字幕时间轴" : "知识笔记" }}</strong>
+              </div>
+              <button
+                class="result-rail-toggle"
+                data-testid="result-rail-collapse"
+                type="button"
+                aria-label="收起结果边栏"
+                @click="setResultRailCollapsed(true)"
+              >
+                收起
+              </button>
+            </div>
+
+            <div class="result-tabs" data-testid="result-tabs" role="tablist" aria-label="结果视图">
+              <button
+                data-testid="result-tab-subtitles"
+                type="button"
+                role="tab"
+                :aria-selected="activeResultTab === 'subtitles'"
+                :data-active="activeResultTab === 'subtitles'"
+                @click="activeResultTab = 'subtitles'"
+              >
+                字幕
+                <span>{{ subtitles.length }}</span>
+              </button>
+              <button
+                data-testid="result-tab-insight"
+                type="button"
+                role="tab"
+                :aria-selected="activeResultTab === 'insight'"
+                :data-active="activeResultTab === 'insight'"
+                @click="activeResultTab = 'insight'"
+              >
+                笔记
+                <span>{{ insight?.items.length ?? 0 }}</span>
+              </button>
+            </div>
+
+            <div class="result-pane">
+              <SubtitlePanel
+                v-if="activeResultTab === 'subtitles'"
+                data-testid="subtitle-panel"
+                :cues="subtitles"
+                :srt-url="currentJob?.srt_download_url ?? null"
+                :active-cue-index="activeSubtitle?.index ?? null"
+                :terms="glossaryTerms"
+                @select="handleSubtitleSelect"
+              />
+              <InsightPanel
+                v-else
+                data-testid="insight-panel"
+                :insight="insight"
+                :is-loading="isGeneratingInsight"
+                :can-generate="canGenerateInsight"
+                :active-item-id="activeInsightItem?.id ?? null"
+                @generate="handleGenerateInsight"
+                @select-item="handleInsightSelect"
+              />
+            </div>
+          </section>
         </aside>
       </div>
     </section>

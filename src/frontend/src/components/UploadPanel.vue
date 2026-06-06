@@ -117,28 +117,30 @@ function submitUpload(): void {
       </label>
     </div>
 
-    <label class="field">
-      <span>字幕模式</span>
-      <select
-        v-model="subtitleMode"
-        data-testid="subtitle-mode"
-        :disabled="props.isSubmitting"
-      >
-        <option value="source">原文字幕</option>
-        <option value="target">译文字幕</option>
-        <option value="bilingual">双语字幕</option>
-      </select>
-    </label>
+    <div class="upload-options-grid">
+      <label class="field">
+        <span>字幕模式</span>
+        <select
+          v-model="subtitleMode"
+          data-testid="subtitle-mode"
+          :disabled="props.isSubmitting"
+        >
+          <option value="source">原文字幕</option>
+          <option value="target">译文字幕</option>
+          <option value="bilingual">双语字幕</option>
+        </select>
+      </label>
 
-    <label class="check-field">
-      <input
-        v-model="correctText"
-        data-testid="correct-text"
-        type="checkbox"
-        :disabled="props.isSubmitting"
-      />
-      <span>启用文本修正</span>
-    </label>
+      <label class="check-field compact-check-field">
+        <input
+          v-model="correctText"
+          data-testid="correct-text"
+          type="checkbox"
+          :disabled="props.isSubmitting"
+        />
+        <span>启用文本修正</span>
+      </label>
+    </div>
 
     <button data-testid="submit-upload" type="submit" :disabled="!canSubmit">
       {{ props.isSubmitting ? "上传中..." : "开始生成字幕" }}

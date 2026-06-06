@@ -75,109 +75,113 @@ function getTermSecondaryText(item: InsightItem): string | null {
       <span v-else class="download-disabled">MD 尚未生成</span>
     </div>
 
-    <div v-if="isLoading" class="empty-state">
-      正在生成知识笔记
-    </div>
+    <div class="insight-scroll-region" data-testid="insight-scroll-region">
+      <div v-if="isLoading" class="empty-state">
+        正在生成知识笔记
+      </div>
 
-    <div v-else-if="!insight" class="empty-state">
-      暂无知识笔记
-    </div>
+      <div v-else-if="!insight" class="empty-state">
+        暂无知识笔记
+      </div>
 
-    <div v-else class="insight-body">
-      <section class="insight-summary">
-        <h3>摘要</h3>
-        <p>{{ insight.summary }}</p>
-      </section>
+      <div v-else class="insight-body">
+        <section class="insight-summary">
+          <h3>摘要</h3>
+          <p>{{ insight.summary }}</p>
+        </section>
 
-      <section
-        v-if="termItems.length > 0"
-        class="video-glossary"
-        data-testid="video-glossary"
-      >
-        <div class="video-glossary-heading">
-          <h3>本视频术语表</h3>
-          <span>{{ termItems.length }} 个术语</span>
-        </div>
+        <section
+          v-if="termItems.length > 0"
+          class="video-glossary"
+          data-testid="video-glossary"
+        >
+          <div class="video-glossary-heading">
+            <h3>本视频术语表</h3>
+            <span>{{ termItems.length }} 个术语</span>
+          </div>
 
-        <ol>
-          <li
-            v-for="item in termItems"
-            :key="item.id"
-            class="glossary-item"
-            :data-active="item.id === activeItemId"
-            :data-testid="`glossary-item-${item.id}`"
-            :aria-current="item.id === activeItemId ? 'true' : undefined"
-            role="button"
-            tabindex="0"
-            @click="$emit('select-item', item)"
-            @keydown.enter="$emit('select-item', item)"
-          >
-            <div class="insight-item-meta">
-              <span>{{ formatCueTime(item.start) }} - {{ formatCueTime(item.end) }}</span>
-              <span v-if="item.source_cue_indexes.length > 0">
-                来源字幕: {{ item.source_cue_indexes.join(", ") }}
-              </span>
-            </div>
-            <strong>{{ getTermPrimaryText(item) }}</strong>
-            <span
-              v-if="getTermSecondaryText(item)"
-              class="glossary-translation"
+          <ol>
+            <li
+              v-for="item in termItems"
+              :key="item.id"
             >
-              {{ getTermSecondaryText(item) }}
-            </span>
-            <p>{{ item.content }}</p>
-          </li>
-        </ol>
-      </section>
-
-      <section
-        v-for="group in groupedItems"
-        :key="group.type"
-        class="insight-group"
-      >
-        <h3>{{ group.label }}</h3>
-
-        <ol>
-          <li
-            v-for="item in group.items"
-            :key="item.id"
-            class="insight-item"
-            :data-active="item.id === activeItemId"
-            :data-testid="`insight-item-${item.id}`"
-            :aria-current="item.id === activeItemId ? 'true' : undefined"
-            role="button"
-            tabindex="0"
-            @click="$emit('select-item', item)"
-            @keydown.enter="$emit('select-item', item)"
-          >
-            <div class="insight-item-meta">
-              <span>{{ formatCueTime(item.start) }} - {{ formatCueTime(item.end) }}</span>
-              <span v-if="item.source_cue_indexes.length > 0">
-                来源字幕: {{ item.source_cue_indexes.join(", ") }}
-              </span>
-            </div>
-            <strong>{{ item.title }}</strong>
-            <p>
-              <template
-                v-for="(segment, segmentIndex) in buildTermHighlightSegments(
-                  item.content,
-                  glossaryTerms,
-                )"
-                :key="`${item.id}-${segmentIndex}`"
+              <button
+                class="glossary-item"
+                type="button"
+                :data-active="item.id === activeItemId"
+                :data-testid="`glossary-item-${item.id}`"
+                :aria-current="item.id === activeItemId ? 'true' : undefined"
+                @click="$emit('select-item', item)"
               >
-                <mark
-                  v-if="segment.highlighted"
-                  class="term-highlight"
-                  :data-testid="`term-highlight-${segment.text}`"
+                <div class="insight-item-meta">
+                  <span>{{ formatCueTime(item.start) }} - {{ formatCueTime(item.end) }}</span>
+                  <span v-if="item.source_cue_indexes.length > 0">
+                    来源字幕: {{ item.source_cue_indexes.join(", ") }}
+                  </span>
+                </div>
+                <strong>{{ getTermPrimaryText(item) }}</strong>
+                <span
+                  v-if="getTermSecondaryText(item)"
+                  class="glossary-translation"
                 >
-                  {{ segment.text }}
-                </mark>
-                <template v-else>{{ segment.text }}</template>
-              </template>
-            </p>
-          </li>
-        </ol>
-      </section>
+                  {{ getTermSecondaryText(item) }}
+                </span>
+                <p>{{ item.content }}</p>
+              </button>
+            </li>
+          </ol>
+        </section>
+
+        <section
+          v-for="group in groupedItems"
+          :key="group.type"
+          class="insight-group"
+        >
+          <h3>{{ group.label }}</h3>
+
+          <ol>
+            <li
+              v-for="item in group.items"
+              :key="item.id"
+            >
+              <button
+                class="insight-item"
+                type="button"
+                :data-active="item.id === activeItemId"
+                :data-testid="`insight-item-${item.id}`"
+                :aria-current="item.id === activeItemId ? 'true' : undefined"
+                @click="$emit('select-item', item)"
+              >
+                <div class="insight-item-meta">
+                  <span>{{ formatCueTime(item.start) }} - {{ formatCueTime(item.end) }}</span>
+                  <span v-if="item.source_cue_indexes.length > 0">
+                    来源字幕: {{ item.source_cue_indexes.join(", ") }}
+                  </span>
+                </div>
+                <strong>{{ item.title }}</strong>
+                <p>
+                  <template
+                    v-for="(segment, segmentIndex) in buildTermHighlightSegments(
+                      item.content,
+                      glossaryTerms,
+                    )"
+                    :key="`${item.id}-${segmentIndex}`"
+                  >
+                    <mark
+                      v-if="segment.highlighted"
+                      class="term-highlight"
+                      :data-testid="`term-highlight-${segment.text}`"
+                    >
+                      {{ segment.text }}
+                    </mark>
+                    <template v-else>{{ segment.text }}</template>
+                  </template>
+                </p>
+              </button>
+            </li>
+          </ol>
+        </section>
+      </div>
     </div>
   </section>
 </template>

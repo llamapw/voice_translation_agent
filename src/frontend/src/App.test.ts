@@ -124,9 +124,75 @@ describe("App", () => {
     const wrapper = mount(App);
 
     expect(wrapper.find('[data-testid="app-topbar"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="workflow-steps"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="control-rail"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="preview-stage"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="subtitle-rail"]').exists()).toBe(true);
+  });
+
+  it("renders the redesigned workbench identity and workflow stages", () => {
+    const wrapper = mount(App);
+    const topbar = wrapper.get('[data-testid="app-topbar"]');
+    const workflowSteps = wrapper.get('[data-testid="workflow-steps"]');
+
+    expect(topbar.text()).toContain("实时字幕工作台");
+    expect(topbar.text()).toContain("上传视频、同步字幕、沉淀知识笔记");
+    expect(workflowSteps.text()).toContain("导入");
+    expect(workflowSteps.text()).toContain("转写翻译");
+    expect(workflowSteps.text()).toContain("知识整理");
+  });
+
+  it("switches the result rail between subtitles and notes", async () => {
+    const wrapper = mount(App);
+
+    expect(wrapper.get('[data-testid="result-tabs"]').text()).toContain("字幕");
+    expect(wrapper.get('[data-testid="subtitle-panel"]').isVisible()).toBe(true);
+    expect(wrapper.find('[data-testid="insight-panel"]').exists()).toBe(false);
+
+    await wrapper.get('[data-testid="result-tab-insight"]').trigger("click");
+
+    expect(wrapper.get('[data-testid="insight-panel"]').isVisible()).toBe(true);
+    expect(wrapper.find('[data-testid="subtitle-panel"]').exists()).toBe(false);
+  });
+
+  it("collapses and expands the result rail", async () => {
+    const wrapper = mount(App);
+
+    expect(wrapper.get('[data-testid="subtitle-rail"]').attributes("data-collapsed")).toBe(
+      "false",
+    );
+
+    await wrapper.get('[data-testid="result-rail-collapse"]').trigger("click");
+
+    expect(wrapper.get('[data-testid="subtitle-rail"]').attributes("data-collapsed")).toBe("true");
+    expect(wrapper.find('[data-testid="result-tabs"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="result-rail-expand"]').text()).toContain("结果");
+
+    await wrapper.get('[data-testid="result-rail-expand"]').trigger("click");
+
+    expect(wrapper.get('[data-testid="subtitle-rail"]').attributes("data-collapsed")).toBe(
+      "false",
+    );
+    expect(wrapper.find('[data-testid="result-tabs"]').exists()).toBe(true);
+  });
+
+  it("resizes the result rail with keyboard controls", async () => {
+    const wrapper = mount(App);
+    const layout = wrapper.get(".workbench-layout");
+
+    expect(layout.attributes("style")).toContain("--result-rail-width: 430px");
+
+    await wrapper.get('[data-testid="result-resize-handle"]').trigger("keydown", {
+      key: "ArrowLeft",
+    });
+
+    expect(layout.attributes("style")).toContain("--result-rail-width: 454px");
+
+    await wrapper.get('[data-testid="result-resize-handle"]').trigger("keydown", {
+      key: "ArrowRight",
+    });
+
+    expect(layout.attributes("style")).toContain("--result-rail-width: 430px");
   });
 
   it("renders localized topbar status metrics after a job is loaded", async () => {
@@ -510,11 +576,15 @@ describe("App", () => {
     await wrapper.get("form").trigger("submit");
     await vi.runOnlyPendingTimersAsync();
     await wrapper.vm.$nextTick();
+    await wrapper.get('[data-testid="result-tab-insight"]').trigger("click");
+    await wrapper.vm.$nextTick();
     await wrapper.get('[data-testid="generate-insight"]').trigger("click");
     await wrapper.vm.$nextTick();
 
     expect(wrapper.get('[data-testid="video-glossary"]').text()).toContain("热应激");
     expect(wrapper.get('[data-testid="video-glossary"]').text()).toContain("heat stress");
+    await wrapper.get('[data-testid="result-tab-subtitles"]').trigger("click");
+    await wrapper.vm.$nextTick();
     expect(wrapper.get('[data-testid="term-highlight-Heat stress"]').text()).toBe("Heat stress");
     expect(wrapper.get('[data-testid="term-highlight-热应激"]').text()).toBe("热应激");
   });
@@ -548,6 +618,8 @@ describe("App", () => {
     await fileInput.trigger("change");
     await wrapper.get("form").trigger("submit");
     await vi.runOnlyPendingTimersAsync();
+    await wrapper.vm.$nextTick();
+    await wrapper.get('[data-testid="result-tab-insight"]').trigger("click");
     await wrapper.vm.$nextTick();
     await wrapper.get('[data-testid="generate-insight"]').trigger("click");
     await wrapper.vm.$nextTick();

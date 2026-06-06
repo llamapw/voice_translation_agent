@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import type { ComponentPublicInstance } from "vue";
+import { nextTick, ref, watch } from "vue";
+
 import { formatCueTime, type SubtitleCue } from "../types/subtitle";
 import { buildTermHighlightSegments } from "../utils/termHighlight";
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   cues: SubtitleCue[];
   activeCueIndex?: number | null;
   terms?: string[];
@@ -14,13 +17,61 @@ defineEmits<{
   select: [cue: SubtitleCue];
 }>();
 
+const cueItemRefs = new Map<number, HTMLElement>();
+const subtitleListElement = ref<HTMLElement | null>(null);
+
 function formatCueDuration(cue: SubtitleCue): string {
   return `${Math.max(0, cue.end - cue.start).toFixed(2)}s`;
 }
+
+function setCueItemRef(
+  cueIndex: number,
+  element: Element | ComponentPublicInstance | null,
+): void {
+  if (element instanceof HTMLElement) {
+    cueItemRefs.set(cueIndex, element);
+    return;
+  }
+
+  cueItemRefs.delete(cueIndex);
+}
+
+function scrollActiveCueIntoView(activeCueIndex: number | null | undefined): void {
+  if (activeCueIndex === null || activeCueIndex === undefined) {
+    return;
+  }
+
+  const scrollContainer = subtitleListElement.value;
+  const activeCue = cueItemRefs.get(activeCueIndex);
+  if (!scrollContainer || !activeCue) {
+    return;
+  }
+
+  const targetScrollTop =
+    activeCue.offsetTop - scrollContainer.clientHeight / 2 + activeCue.clientHeight / 2;
+  const top = Math.max(0, targetScrollTop);
+  if (typeof scrollContainer.scrollTo === "function") {
+    scrollContainer.scrollTo({
+      top,
+      behavior: "smooth",
+    });
+    return;
+  }
+
+  scrollContainer.scrollTop = top;
+}
+
+watch(
+  () => props.activeCueIndex,
+  async (activeCueIndex) => {
+    await nextTick();
+    scrollActiveCueIntoView(activeCueIndex);
+  },
+);
 </script>
 
 <template>
-  <div class="subtitle-list">
+  <div ref="subtitleListElement" class="subtitle-list" data-testid="subtitle-list">
     <div v-if="cues.length === 0" class="subtitle-empty-guide" data-testid="subtitle-empty-guide">
       <div class="subtitle-empty-intro">
         <strong>字幕会在这里生成</strong>
@@ -46,52 +97,55 @@ function formatCueDuration(cue: SubtitleCue): string {
       <li
         v-for="cue in cues"
         :key="cue.index"
-        class="subtitle-item"
-        :data-active="cue.index === activeCueIndex"
-        :aria-current="cue.index === activeCueIndex ? 'true' : undefined"
-        role="button"
-        tabindex="0"
-        @click="$emit('select', cue)"
-        @keydown.enter="$emit('select', cue)"
       >
-        <div class="cue-meta">
-          <strong>#{{ cue.index }}</strong>
-          <span>{{ formatCueTime(cue.start) }} - {{ formatCueTime(cue.end) }}</span>
-        </div>
-        <div class="cue-support">
-          <span :data-testid="`cue-duration-${cue.index}`">持续 {{ formatCueDuration(cue) }}</span>
-          <span v-if="cue.index === activeCueIndex" class="cue-active-label">当前字幕</span>
-        </div>
-        <p class="cue-source">
-          <template
-            v-for="(segment, segmentIndex) in buildTermHighlightSegments(cue.source_text, terms)"
-            :key="`source-${cue.index}-${segmentIndex}`"
-          >
-            <mark
-              v-if="segment.highlighted"
-              class="term-highlight"
-              :data-testid="`term-highlight-${segment.text}`"
+        <button
+          class="subtitle-item"
+          type="button"
+          :ref="(element) => setCueItemRef(cue.index, element)"
+          :data-subtitle-cue-index="cue.index"
+          :data-active="cue.index === activeCueIndex"
+          :aria-current="cue.index === activeCueIndex ? 'true' : undefined"
+          @click="$emit('select', cue)"
+        >
+          <div class="cue-meta">
+            <strong>#{{ cue.index }}</strong>
+            <span>{{ formatCueTime(cue.start) }} - {{ formatCueTime(cue.end) }}</span>
+          </div>
+          <div class="cue-support">
+            <span :data-testid="`cue-duration-${cue.index}`">持续 {{ formatCueDuration(cue) }}</span>
+            <span v-if="cue.index === activeCueIndex" class="cue-active-label">当前字幕</span>
+          </div>
+          <p class="cue-source">
+            <template
+              v-for="(segment, segmentIndex) in buildTermHighlightSegments(cue.source_text, terms)"
+              :key="`source-${cue.index}-${segmentIndex}`"
             >
-              {{ segment.text }}
-            </mark>
-            <template v-else>{{ segment.text }}</template>
-          </template>
-        </p>
-        <p class="cue-target">
-          <template
-            v-for="(segment, segmentIndex) in buildTermHighlightSegments(cue.target_text, terms)"
-            :key="`target-${cue.index}-${segmentIndex}`"
-          >
-            <mark
-              v-if="segment.highlighted"
-              class="term-highlight"
-              :data-testid="`term-highlight-${segment.text}`"
+              <mark
+                v-if="segment.highlighted"
+                class="term-highlight"
+                :data-testid="`term-highlight-${segment.text}`"
+              >
+                {{ segment.text }}
+              </mark>
+              <template v-else>{{ segment.text }}</template>
+            </template>
+          </p>
+          <p class="cue-target">
+            <template
+              v-for="(segment, segmentIndex) in buildTermHighlightSegments(cue.target_text, terms)"
+              :key="`target-${cue.index}-${segmentIndex}`"
             >
-              {{ segment.text }}
-            </mark>
-            <template v-else>{{ segment.text }}</template>
-          </template>
-        </p>
+              <mark
+                v-if="segment.highlighted"
+                class="term-highlight"
+                :data-testid="`term-highlight-${segment.text}`"
+              >
+                {{ segment.text }}
+              </mark>
+              <template v-else>{{ segment.text }}</template>
+            </template>
+          </p>
+        </button>
       </li>
     </ol>
   </div>
