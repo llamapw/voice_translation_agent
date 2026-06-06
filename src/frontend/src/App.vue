@@ -71,8 +71,10 @@ const displayedLiveSubtitleText = computed(() => {
   }
 
   if (subtitleMode === "target") {
+    const hasTranslatedText = cue.target_text && cue.target_text !== cue.source_text;
+
     return {
-      primary: cue.target_text || cue.source_text,
+      primary: hasTranslatedText ? cue.target_text : "正在翻译...",
       secondary: null,
     };
   }
