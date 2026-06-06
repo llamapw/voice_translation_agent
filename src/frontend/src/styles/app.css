@@ -461,6 +461,23 @@ h2 {
   color: #697786;
 }
 
+.subtitle-timeline-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #d9e7ed;
+  border-radius: 6px;
+  background: #f6fbfc;
+  color: #52606d;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.subtitle-timeline-summary strong {
+  color: #155e66;
+}
+
 .subtitle-list ol {
   display: grid;
   gap: 12px;
@@ -496,6 +513,26 @@ h2 {
   border-color: #1f6f78;
   background: #eef9fb;
   box-shadow: inset 3px 0 0 #1f6f78;
+}
+
+.cue-support {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #697786;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cue-active-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #dff3f6;
+  color: #155e66;
 }
 
 .cue-meta {
@@ -572,5 +609,9 @@ h2 {
   .result-heading {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .subtitle-timeline-summary {
+    grid-template-columns: 1fr;
   }
 }

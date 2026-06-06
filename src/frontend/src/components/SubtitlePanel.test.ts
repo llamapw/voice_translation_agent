@@ -15,6 +15,18 @@ const cues: SubtitleCue[] = [
   },
 ];
 
+const timelineCues: SubtitleCue[] = [
+  cues[0],
+  {
+    index: 2,
+    start: 14,
+    end: 18.5,
+    source_text: "Next line",
+    target_text: "下一句",
+    display_text: "Next line\n下一句",
+  },
+];
+
 describe("SubtitlePanel", () => {
   it("renders subtitle count and download link", () => {
     const wrapper = mount(SubtitlePanel, {
@@ -38,6 +50,22 @@ describe("SubtitlePanel", () => {
     });
 
     expect(wrapper.text()).toContain("SRT 尚未生成");
+  });
+
+  it("renders timeline summary and active cue hint", () => {
+    const wrapper = mount(SubtitlePanel, {
+      props: {
+        cues: timelineCues,
+        srtUrl: null,
+        activeCueIndex: 2,
+      },
+    });
+
+    const summary = wrapper.get('[data-testid="subtitle-timeline-summary"]').text();
+
+    expect(summary).toContain("2 条字幕");
+    expect(summary).toContain("00:18.500");
+    expect(summary).toContain("当前 #2");
   });
 
   it("passes active cue state and selected cues through", async () => {
