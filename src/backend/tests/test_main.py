@@ -70,3 +70,20 @@ def test_app_streams_mock_job_events(tmp_path):
     assert response.headers["content-type"].startswith("text/event-stream")
     assert "event: subtitle_partial" in response.text
     assert "Sample source subtitle." in response.text
+
+
+def test_app_registers_insights_api_router(tmp_path):
+    client = TestClient(create_app(storage_root=tmp_path, use_real_worker=False))
+
+    created = client.post(
+        "/api/jobs",
+        files={"file": ("meeting.mp4", b"fake video", "video/mp4")},
+    ).json()
+
+    response = client.post("/api/jobs/{0}/insights".format(created["id"]))
+
+    assert response.status_code == 200
+    assert response.json()["job_id"] == created["id"]
+    assert response.json()["markdown_url"] == "/api/jobs/{0}/insights/markdown".format(
+        created["id"]
+    )
