@@ -437,6 +437,18 @@ h2 {
   background: #111827;
 }
 
+.video-time-display {
+  justify-self: end;
+  padding: 6px 10px;
+  border: 1px solid #dbe4eb;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #52606d;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .live-subtitle-panel {
   gap: 14px;
   border-color: #cfe0d6;
