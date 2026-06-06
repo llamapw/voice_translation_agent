@@ -18,8 +18,8 @@ dashscope>=1.20.0
 openai>=1.54.0
 
 # LangChain-based Insight Agent integration.
-langchain>=0.3.0
-langchain-openai>=0.2.0
+langchain>=1.0.0
+langchain-openai>=1.0.0
 
 # Test runner for backend unit and API tests.
 pytest>=8.3.0
