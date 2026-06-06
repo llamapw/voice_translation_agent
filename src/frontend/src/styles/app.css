@@ -716,6 +716,81 @@ h2 {
   line-height: 1.7;
 }
 
+.video-glossary {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #cfe0d6;
+  border-radius: 6px;
+  background: #f6fbf8;
+}
+
+.video-glossary-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.video-glossary-heading h3 {
+  margin: 0;
+  color: #172033;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.video-glossary-heading span {
+  color: #1f5d66;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.video-glossary ol {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.glossary-item {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #d8e7dd;
+  border-radius: 6px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.glossary-item:hover,
+.glossary-item:focus-visible {
+  border-color: #8fbfa0;
+  background: #fbfefc;
+  outline: none;
+}
+
+.glossary-item strong {
+  color: #166534;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.glossary-item p {
+  margin: 0;
+  color: #304152;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.term-highlight {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #dff3e8;
+  color: #166534;
+  font-weight: 800;
+}
+
 .insight-group ol {
   display: grid;
   gap: 10px;

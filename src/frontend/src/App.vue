@@ -22,6 +22,7 @@ import { getSubtitles as defaultGetSubtitles } from "./api/subtitles";
 import type { InsightItem, InsightRead } from "./types/insight";
 import { isFinishedJob, statusLabel, type JobRead } from "./types/job";
 import { formatCueTime, type SubtitleCue } from "./types/subtitle";
+import { uniqueTermNames } from "./utils/termHighlight";
 
 const props = withDefaults(
   defineProps<{
@@ -98,6 +99,13 @@ const topbarStatusLabel = computed(() =>
 const topbarProgressLabel = computed(() => `${currentJob.value?.progress ?? 0}%`);
 const topbarSubtitleCountLabel = computed(() => `${subtitles.value.length} 条字幕`);
 const canGenerateInsight = computed(() => currentJob.value?.status === "done");
+const glossaryTerms = computed(() =>
+  uniqueTermNames(
+    insight.value?.items
+      .filter((item) => item.type === "term")
+      .map((item) => item.title) ?? [],
+  ),
+);
 
 function clearPollTimer(): void {
   if (pollTimer !== null) {
@@ -388,6 +396,7 @@ onBeforeUnmount(() => {
             :cues="subtitles"
             :srt-url="currentJob?.srt_download_url ?? null"
             :active-cue-index="activeSubtitle?.index ?? null"
+            :terms="glossaryTerms"
             @select="handleSubtitleSelect"
           />
           <InsightPanel

@@ -3,6 +3,7 @@ import { computed } from "vue";
 
 import { insightItemTypeLabel, type InsightItem, type InsightRead } from "../types/insight";
 import { formatCueTime } from "../types/subtitle";
+import { buildTermHighlightSegments, uniqueTermNames } from "../utils/termHighlight";
 
 const props = defineProps<{
   insight: InsightRead | null;
@@ -28,6 +29,8 @@ const groupedItems = computed(() => {
     }))
     .filter((group) => group.items.length > 0);
 });
+const termItems = computed(() => props.insight?.items.filter((item) => item.type === "term") ?? []);
+const glossaryTerms = computed(() => uniqueTermNames(termItems.value.map((item) => item.title)));
 </script>
 
 <template>
@@ -76,6 +79,38 @@ const groupedItems = computed(() => {
       </section>
 
       <section
+        v-if="termItems.length > 0"
+        class="video-glossary"
+        data-testid="video-glossary"
+      >
+        <div class="video-glossary-heading">
+          <h3>本视频术语表</h3>
+          <span>{{ termItems.length }} 个术语</span>
+        </div>
+
+        <ol>
+          <li
+            v-for="item in termItems"
+            :key="item.id"
+            class="glossary-item"
+            role="button"
+            tabindex="0"
+            @click="$emit('select-item', item)"
+            @keydown.enter="$emit('select-item', item)"
+          >
+            <div class="insight-item-meta">
+              <span>{{ formatCueTime(item.start) }} - {{ formatCueTime(item.end) }}</span>
+              <span v-if="item.source_cue_indexes.length > 0">
+                来源字幕: {{ item.source_cue_indexes.join(", ") }}
+              </span>
+            </div>
+            <strong>{{ item.title }}</strong>
+            <p>{{ item.content }}</p>
+          </li>
+        </ol>
+      </section>
+
+      <section
         v-for="group in groupedItems"
         :key="group.type"
         class="insight-group"
@@ -99,7 +134,24 @@ const groupedItems = computed(() => {
               </span>
             </div>
             <strong>{{ item.title }}</strong>
-            <p>{{ item.content }}</p>
+            <p>
+              <template
+                v-for="(segment, segmentIndex) in buildTermHighlightSegments(
+                  item.content,
+                  glossaryTerms,
+                )"
+                :key="`${item.id}-${segmentIndex}`"
+              >
+                <mark
+                  v-if="segment.highlighted"
+                  class="term-highlight"
+                  :data-testid="`term-highlight-${segment.text}`"
+                >
+                  {{ segment.text }}
+                </mark>
+                <template v-else>{{ segment.text }}</template>
+              </template>
+            </p>
           </li>
         </ol>
       </section>

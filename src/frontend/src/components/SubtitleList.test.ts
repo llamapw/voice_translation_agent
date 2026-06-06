@@ -78,4 +78,26 @@ describe("SubtitleList", () => {
 
     expect(wrapper.get('[data-testid="cue-duration-1"]').text()).toContain("12.96s");
   });
+
+  it("highlights glossary terms in subtitle text", () => {
+    const wrapper = mount(SubtitleList, {
+      props: {
+        cues: [
+          {
+            ...cues[0],
+            source_text: "Compensable heat stress",
+            target_text: "可补偿热应激",
+          },
+        ],
+        terms: ["heat stress", "可补偿热应激"],
+      },
+    });
+
+    expect(wrapper.get('[data-testid="term-highlight-heat stress"]').text()).toBe(
+      "heat stress",
+    );
+    expect(wrapper.get('[data-testid="term-highlight-可补偿热应激"]').text()).toBe(
+      "可补偿热应激",
+    );
+  });
 });
