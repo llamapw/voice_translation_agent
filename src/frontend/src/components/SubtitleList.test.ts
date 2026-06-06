@@ -31,7 +31,11 @@ describe("SubtitleList", () => {
       },
     });
 
-    expect(wrapper.text()).toContain("暂无字幕");
+    const guide = wrapper.get('[data-testid="subtitle-empty-guide"]');
+
+    expect(guide.text()).toContain("上传视频");
+    expect(guide.text()).toContain("实时生成字幕");
+    expect(guide.text()).toContain("播放联动与导出");
   });
 
   it("renders cue index, time, and bilingual text", () => {

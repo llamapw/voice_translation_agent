@@ -17,8 +17,25 @@ function formatCueDuration(cue: SubtitleCue): string {
 
 <template>
   <div class="subtitle-list">
-    <div v-if="cues.length === 0" class="empty-state">
-      暂无字幕
+    <div v-if="cues.length === 0" class="subtitle-empty-guide" data-testid="subtitle-empty-guide">
+      <div class="subtitle-empty-intro">
+        <strong>字幕会在这里生成</strong>
+        <span>上传视频并启动任务后，可以实时查看字幕列表和时间轴联动结果。</span>
+      </div>
+      <ol class="subtitle-empty-steps" aria-label="字幕生成流程">
+        <li>
+          <span>1</span>
+          <strong>上传视频</strong>
+        </li>
+        <li>
+          <span>2</span>
+          <strong>实时生成字幕</strong>
+        </li>
+        <li>
+          <span>3</span>
+          <strong>播放联动与导出</strong>
+        </li>
+      </ol>
     </div>
 
     <ol v-else>

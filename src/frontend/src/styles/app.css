@@ -543,6 +543,68 @@ h2 {
   list-style: none;
 }
 
+.subtitle-empty-guide {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px dashed #b8dbe1;
+  border-radius: 6px;
+  background: #f6fbfc;
+}
+
+.subtitle-empty-intro {
+  display: grid;
+  gap: 4px;
+}
+
+.subtitle-empty-intro strong {
+  color: #172033;
+  font-size: 15px;
+}
+
+.subtitle-empty-intro span {
+  color: #52606d;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.subtitle-empty-steps {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.subtitle-empty-steps li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 8px;
+  border: 1px solid #d9e7ed;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.subtitle-empty-steps span {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #e7f3f5;
+  color: #155e66;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.subtitle-empty-steps strong {
+  color: #304152;
+  font-size: 13px;
+}
+
 .subtitle-item {
   display: grid;
   gap: 8px;
