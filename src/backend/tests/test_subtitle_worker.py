@@ -211,7 +211,7 @@ def test_run_subtitle_job_publishes_events_for_real_worker(tmp_path):
     assert event_types[-1] == JobEventType.job_closed
 
 
-def test_run_subtitle_job_publishes_raw_asr_cues_before_llm_cues(tmp_path):
+def test_run_subtitle_job_publishes_enriched_cues_to_realtime_stream(tmp_path):
     job_service = JobService()
     subtitle_service = SubtitleService()
     media_service = FakeMediaService()
@@ -251,13 +251,11 @@ def test_run_subtitle_job_publishes_raw_asr_cues_before_llm_cues(tmp_path):
         if event.type == JobEventType.job_closed:
             break
 
-    assert [event.data["cue"]["source_text"] for event in subtitle_events] == [
-        "helo world",
-        "Hello, world.",
-    ]
+    assert [event.data["cue"]["source_text"] for event in subtitle_events] == ["Hello, world."]
+    assert [event.data["cue"]["target_text"] for event in subtitle_events] == ["你好，世界。"]
 
 
-def test_run_subtitle_job_passes_streaming_callback_to_asr(tmp_path):
+def test_run_subtitle_job_passes_streaming_callback_to_llm(tmp_path):
     job_service = JobService()
     subtitle_service = SubtitleService()
     media_service = FakeMediaService()
@@ -280,7 +278,7 @@ def test_run_subtitle_job_passes_streaming_callback_to_asr(tmp_path):
         event_service=event_service,
     )
 
-    assert asr_service.on_cue is not None
+    assert llm_service.calls[0][4] is not None
 
 
 def test_run_subtitle_job_marks_job_failed_when_processing_raises(tmp_path):
