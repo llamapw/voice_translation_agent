@@ -47,6 +47,22 @@ const insight: InsightRead = {
   markdown_url: "/api/jobs/job_test/insights/markdown",
 };
 
+const insightWithTerm: InsightRead = {
+  ...insight,
+  items: [
+    ...insight.items,
+    {
+      id: "term_1",
+      type: "term",
+      title: "热应激",
+      content: "身体热量压力相关概念。",
+      start: 0.55,
+      end: 13.51,
+      source_cue_indexes: [1],
+    },
+  ],
+};
+
 function buildJob(overrides: Partial<JobRead> = {}): JobRead {
   return {
     id: "job_test",
@@ -454,6 +470,49 @@ describe("App", () => {
     await items[0].trigger("click");
 
     expect(video.element.currentTime).toBe(0.55);
+  });
+
+  it("highlights generated glossary terms in the subtitle list", async () => {
+    vi.useFakeTimers();
+    const createdJob = buildJob();
+    const doneJob = buildJob({
+      status: "done",
+      progress: 100,
+      message: "Subtitle task completed.",
+    });
+    const wrapper = mount(App, {
+      props: {
+        createJob: vi.fn().mockResolvedValue(createdJob),
+        getJob: vi.fn().mockResolvedValue(doneJob),
+        getSubtitles: vi.fn().mockResolvedValue([
+          {
+            ...subtitles[0],
+            source_text: "Heat stress",
+            target_text: "热应激",
+          },
+        ]),
+        generateInsight: vi.fn().mockResolvedValue(insightWithTerm),
+        createJobEventSource: vi.fn().mockReturnValue(new FakeEventSource()),
+        pollIntervalMs: 10,
+      },
+    });
+    const file = new File(["demo"], "demo.mp4", { type: "video/mp4" });
+    const fileInput = wrapper.get<HTMLInputElement>('[data-testid="video-file"]');
+
+    Object.defineProperty(fileInput.element, "files", {
+      value: [file],
+      configurable: true,
+    });
+
+    await fileInput.trigger("change");
+    await wrapper.get("form").trigger("submit");
+    await vi.runOnlyPendingTimersAsync();
+    await wrapper.vm.$nextTick();
+    await wrapper.get('[data-testid="generate-insight"]').trigger("click");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.get('[data-testid="video-glossary"]').text()).toContain("热应激");
+    expect(wrapper.get('[data-testid="term-highlight-热应激"]').text()).toBe("热应激");
   });
 
   it("shows an error when job creation fails", async () => {

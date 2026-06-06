@@ -88,6 +88,50 @@ describe("InsightPanel", () => {
     expect(wrapper.find("a").attributes("href")).toBe("/api/jobs/job_test/insights/markdown");
   });
 
+  it("renders a dedicated video glossary from term insight items", () => {
+    const wrapper = mount(InsightPanel, {
+      props: {
+        insight,
+        isLoading: false,
+        canGenerate: true,
+      },
+    });
+    const glossary = wrapper.get('[data-testid="video-glossary"]');
+
+    expect(glossary.text()).toContain("本视频术语表");
+    expect(glossary.text()).toContain("1 个术语");
+    expect(glossary.text()).toContain("可补偿热应激");
+    expect(glossary.text()).toContain("身体可以及时散热的状态。");
+  });
+
+  it("highlights glossary terms inside insight item content", () => {
+    const wrapper = mount(InsightPanel, {
+      props: {
+        insight: {
+          ...insight,
+          items: [
+            ...insight.items,
+            {
+              id: "key_point_2",
+              type: "key_point",
+              title: "关键概念",
+              content: "可补偿热应激表示身体仍能散热。",
+              start: 11,
+              end: 12,
+              source_cue_indexes: [2],
+            },
+          ],
+        },
+        isLoading: false,
+        canGenerate: true,
+      },
+    });
+
+    expect(wrapper.get('[data-testid="term-highlight-可补偿热应激"]').text()).toBe(
+      "可补偿热应激",
+    );
+  });
+
   it("emits selected insight items", async () => {
     const wrapper = mount(InsightPanel, {
       props: {

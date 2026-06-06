@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { formatCueTime, type SubtitleCue } from "../types/subtitle";
+import { buildTermHighlightSegments } from "../utils/termHighlight";
 
-defineProps<{
+withDefaults(defineProps<{
   cues: SubtitleCue[];
   activeCueIndex?: number | null;
-}>();
+  terms?: string[];
+}>(), {
+  terms: () => [],
+});
 
 defineEmits<{
   select: [cue: SubtitleCue];
@@ -58,8 +62,36 @@ function formatCueDuration(cue: SubtitleCue): string {
           <span :data-testid="`cue-duration-${cue.index}`">持续 {{ formatCueDuration(cue) }}</span>
           <span v-if="cue.index === activeCueIndex" class="cue-active-label">当前字幕</span>
         </div>
-        <p class="cue-source">{{ cue.source_text }}</p>
-        <p class="cue-target">{{ cue.target_text }}</p>
+        <p class="cue-source">
+          <template
+            v-for="(segment, segmentIndex) in buildTermHighlightSegments(cue.source_text, terms)"
+            :key="`source-${cue.index}-${segmentIndex}`"
+          >
+            <mark
+              v-if="segment.highlighted"
+              class="term-highlight"
+              :data-testid="`term-highlight-${segment.text}`"
+            >
+              {{ segment.text }}
+            </mark>
+            <template v-else>{{ segment.text }}</template>
+          </template>
+        </p>
+        <p class="cue-target">
+          <template
+            v-for="(segment, segmentIndex) in buildTermHighlightSegments(cue.target_text, terms)"
+            :key="`target-${cue.index}-${segmentIndex}`"
+          >
+            <mark
+              v-if="segment.highlighted"
+              class="term-highlight"
+              :data-testid="`term-highlight-${segment.text}`"
+            >
+              {{ segment.text }}
+            </mark>
+            <template v-else>{{ segment.text }}</template>
+          </template>
+        </p>
       </li>
     </ol>
   </div>

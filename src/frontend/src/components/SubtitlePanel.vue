@@ -8,6 +8,7 @@ const props = defineProps<{
   cues: SubtitleCue[];
   srtUrl: string | null;
   activeCueIndex?: number | null;
+  terms?: string[];
 }>();
 
 defineEmits<{
@@ -47,6 +48,7 @@ const timelineEnd = computed(() => Math.max(0, ...props.cues.map((cue) => cue.en
     <SubtitleList
       :cues="cues"
       :active-cue-index="activeCueIndex"
+      :terms="terms"
       @select="$emit('select', $event)"
     />
   </section>
