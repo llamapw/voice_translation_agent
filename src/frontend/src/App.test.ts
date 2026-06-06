@@ -93,6 +93,42 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="subtitle-rail"]').exists()).toBe(true);
   });
 
+  it("renders localized topbar status metrics after a job is loaded", async () => {
+    vi.useFakeTimers();
+    const createdJob = buildJob();
+    const doneJob = buildJob({
+      status: "done",
+      progress: 100,
+      message: "Subtitle task completed.",
+    });
+    const wrapper = mount(App, {
+      props: {
+        createJob: vi.fn().mockResolvedValue(createdJob),
+        getJob: vi.fn().mockResolvedValue(doneJob),
+        getSubtitles: vi.fn().mockResolvedValue(timelineSubtitles),
+        createJobEventSource: vi.fn().mockReturnValue(new FakeEventSource()),
+        pollIntervalMs: 10,
+      },
+    });
+    const file = new File(["demo"], "demo.mp4", { type: "video/mp4" });
+    const fileInput = wrapper.get<HTMLInputElement>('[data-testid="video-file"]');
+
+    Object.defineProperty(fileInput.element, "files", {
+      value: [file],
+      configurable: true,
+    });
+
+    await fileInput.trigger("change");
+    await wrapper.get("form").trigger("submit");
+    await vi.runOnlyPendingTimersAsync();
+    await wrapper.vm.$nextTick();
+
+    const topbar = wrapper.get('[data-testid="app-topbar"]').text();
+    expect(topbar).toContain("已完成");
+    expect(topbar).toContain("100%");
+    expect(topbar).toContain("2 条字幕");
+  });
+
   it("creates a job and polls until it is finished", async () => {
     vi.useFakeTimers();
     const createdJob = buildJob();

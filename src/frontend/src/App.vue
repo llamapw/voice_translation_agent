@@ -17,7 +17,7 @@ import {
   type JobEvent,
 } from "./api/jobEvents";
 import { getSubtitles as defaultGetSubtitles } from "./api/subtitles";
-import { isFinishedJob, type JobRead } from "./types/job";
+import { isFinishedJob, statusLabel, type JobRead } from "./types/job";
 import { formatCueTime, type SubtitleCue } from "./types/subtitle";
 
 const props = withDefaults(
@@ -55,6 +55,11 @@ const activeSubtitle = computed(
     ) ?? null,
 );
 const displayedLiveSubtitle = computed(() => activeSubtitle.value ?? liveSubtitle.value);
+const topbarStatusLabel = computed(() =>
+  currentJob.value ? statusLabel[currentJob.value.status] : "等待任务",
+);
+const topbarProgressLabel = computed(() => `${currentJob.value?.progress ?? 0}%`);
+const topbarSubtitleCountLabel = computed(() => `${subtitles.value.length} 条字幕`);
 
 function clearPollTimer(): void {
   if (pollTimer !== null) {
@@ -239,9 +244,20 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="topbar-status">
-          <span class="status-chip" :data-status="currentJob?.status ?? 'idle'">
-            {{ currentJob?.status ?? "idle" }}
-          </span>
+          <div class="topbar-metric">
+            <span>状态</span>
+            <strong class="status-chip" :data-status="currentJob?.status ?? 'idle'">
+              {{ topbarStatusLabel }}
+            </strong>
+          </div>
+          <div class="topbar-metric">
+            <span>进度</span>
+            <strong>{{ topbarProgressLabel }}</strong>
+          </div>
+          <div class="topbar-metric">
+            <span>字幕</span>
+            <strong>{{ topbarSubtitleCountLabel }}</strong>
+          </div>
           <p
             v-if="eventStreamState !== 'idle'"
             class="stream-state topbar-stream-state"
