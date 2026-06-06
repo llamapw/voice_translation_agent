@@ -138,7 +138,17 @@ function applyJobEvent(event: JobEvent): void {
   }
 
   if (event.type === "job_failed") {
-    appError.value = event.data.error ?? "任务处理失败。";
+    const errorMessage = event.data.error ?? "任务处理失败。";
+    appError.value = errorMessage;
+    if (currentJob.value) {
+      currentJob.value = {
+        ...currentJob.value,
+        status: "failed",
+        progress: 100,
+        message: "Task failed.",
+        error: errorMessage,
+      };
+    }
     closeEventSource();
     clearPollTimer();
     return;
@@ -268,7 +278,7 @@ onBeforeUnmount(() => {
         </div>
       </header>
 
-      <p v-if="appError" class="error-message">{{ appError }}</p>
+      <p v-if="appError" class="error-message" role="alert">{{ appError }}</p>
 
       <div class="workbench-layout">
         <aside class="control-rail" data-testid="control-rail">

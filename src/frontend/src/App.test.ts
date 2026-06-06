@@ -233,6 +233,45 @@ describe("App", () => {
     expect(getJob).not.toHaveBeenCalled();
   });
 
+  it("marks the current job failed when a failed SSE event arrives", async () => {
+    const createdJob = buildJob({
+      status: "transcribing",
+      progress: 50,
+      message: "Transcribing speech.",
+    });
+    const eventSource = new FakeEventSource();
+    const wrapper = mount(App, {
+      props: {
+        createJob: vi.fn().mockResolvedValue(createdJob),
+        getJob: vi.fn(),
+        getSubtitles: vi.fn(),
+        createJobEventSource: vi.fn().mockReturnValue(eventSource),
+      },
+    });
+    const file = new File(["demo"], "demo.mp4", { type: "video/mp4" });
+    const fileInput = wrapper.get<HTMLInputElement>('[data-testid="video-file"]');
+
+    Object.defineProperty(fileInput.element, "files", {
+      value: [file],
+      configurable: true,
+    });
+
+    await fileInput.trigger("change");
+    await wrapper.get("form").trigger("submit");
+    await wrapper.vm.$nextTick();
+
+    eventSource.emit({
+      type: "job_failed",
+      job_id: "job_test",
+      data: { error: "ASR request failed." },
+    });
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.get('[data-testid="app-topbar"]').text()).toContain("失败");
+    expect(wrapper.get(".job-status-panel").text()).toContain("失败");
+    expect(wrapper.text()).toContain("ASR request failed.");
+  });
+
   it("links subtitle selection with the video timeline", async () => {
     vi.useFakeTimers();
     const createdJob = buildJob();
@@ -345,5 +384,6 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.text()).toContain("Upload failed.");
+    expect(wrapper.get('[role="alert"]').text()).toContain("Upload failed.");
   });
 });
