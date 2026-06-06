@@ -164,7 +164,8 @@ h1 {
 .job-status-panel,
 .video-panel,
 .live-subtitle-panel,
-.subtitle-panel {
+.subtitle-panel,
+.insight-panel {
   display: grid;
   gap: 18px;
   width: 100%;
@@ -494,11 +495,13 @@ h2 {
 }
 
 .download-link,
-.download-disabled {
+.download-disabled,
+.panel-action-button {
   display: inline-flex;
   align-items: center;
   min-height: 36px;
   padding: 7px 12px;
+  border: 0;
   border-radius: 6px;
   font-size: 14px;
   font-weight: 800;
@@ -506,9 +509,19 @@ h2 {
   white-space: nowrap;
 }
 
-.download-link {
+.download-link,
+.panel-action-button {
   background: #1f6f78;
   color: #ffffff;
+}
+
+.panel-action-button {
+  cursor: pointer;
+}
+
+.panel-action-button:disabled {
+  background: #9aabb8;
+  cursor: not-allowed;
 }
 
 .download-disabled {
@@ -677,6 +690,82 @@ h2 {
   color: #1f5d66;
 }
 
+.insight-body {
+  display: grid;
+  gap: 18px;
+}
+
+.insight-summary,
+.insight-group {
+  display: grid;
+  gap: 10px;
+}
+
+.insight-summary h3,
+.insight-group h3 {
+  margin: 0;
+  color: #172033;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.insight-summary p {
+  margin: 0;
+  color: #304152;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.insight-group ol {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.insight-item {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #d9e2ea;
+  border-radius: 6px;
+  background: #fbfdff;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.insight-item:hover,
+.insight-item:focus-visible {
+  border-color: #93c5cf;
+  background: #f4fbfc;
+  outline: none;
+}
+
+.insight-item-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #697786;
+  font-size: 13px;
+}
+
+.insight-item strong {
+  color: #172033;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.insight-item p {
+  margin: 0;
+  color: #304152;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 @media (max-width: 1180px) {
   .workbench-layout {
     grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
@@ -734,5 +823,10 @@ h2 {
 
   .subtitle-timeline-summary {
     grid-template-columns: 1fr;
+  }
+
+  .insight-item-meta {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

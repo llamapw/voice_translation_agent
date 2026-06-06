@@ -14,6 +14,16 @@ def _read_bool(value: Optional[str], default: bool = False) -> bool:
     return value.strip().lower() in ("1", "true", "yes", "on")
 
 
+def _read_int(value: Optional[str], default: int) -> int:
+    if value is None:
+        return default
+
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
 def get_project_root() -> Path:
     return Path(__file__).resolve().parents[4]
 
@@ -53,6 +63,9 @@ class Settings:
     llm_base_url: str
     llm_api_key: Optional[str]
     use_real_worker: bool
+    use_langchain_insight_agent: bool
+    insight_agent_model: str
+    insight_agent_timeout_seconds: int
 
     def __init__(self, env_file: Optional[Path] = get_default_env_file()) -> None:
         env_values = load_env_file(env_file)
@@ -83,6 +96,15 @@ class Settings:
             or read("qiniu_ai_api_key")
         )
         self.use_real_worker = _read_bool(read("USE_REAL_WORKER"), default=False)
+        self.use_langchain_insight_agent = _read_bool(
+            read("USE_LANGCHAIN_INSIGHT_AGENT"),
+            default=False,
+        )
+        self.insight_agent_model = read("INSIGHT_AGENT_MODEL", self.llm_model) or self.llm_model
+        self.insight_agent_timeout_seconds = _read_int(
+            read("INSIGHT_AGENT_TIMEOUT_SECONDS"),
+            default=60,
+        )
 
 
 settings = Settings()

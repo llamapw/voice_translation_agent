@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App.vue";
 import type { JobEvent } from "./api/jobEvents";
+import type { InsightRead } from "./types/insight";
 import type { JobRead } from "./types/job";
 import type { SubtitleCue } from "./types/subtitle";
 
@@ -28,6 +29,23 @@ const timelineSubtitles: SubtitleCue[] = [
     display_text: "Next line\n下一句",
   },
 ];
+
+const insight: InsightRead = {
+  job_id: "job_test",
+  summary: "运动会产生热量。汗液帮助身体降温。",
+  items: [
+    {
+      id: "key_point_1",
+      type: "key_point",
+      title: "运动产生热量",
+      content: "运动时大部分能量会转化为热量。",
+      start: 0.55,
+      end: 13.51,
+      source_cue_indexes: [1],
+    },
+  ],
+  markdown_url: "/api/jobs/job_test/insights/markdown",
+};
 
 function buildJob(overrides: Partial<JobRead> = {}): JobRead {
   return {
@@ -360,51 +378,6 @@ describe("App", () => {
     await items[0].trigger("click");
 
     expect(video.element.currentTime).toBe(0.55);
-  });
-
-  it("shows metadata for the subtitle currently matched by video time", async () => {
-    vi.useFakeTimers();
-    const createdJob = buildJob();
-    const doneJob = buildJob({
-      status: "done",
-      progress: 100,
-      message: "Subtitle task completed.",
-    });
-    const wrapper = mount(App, {
-      props: {
-        createJob: vi.fn().mockResolvedValue(createdJob),
-        getJob: vi.fn().mockResolvedValue(doneJob),
-        getSubtitles: vi.fn().mockResolvedValue(timelineSubtitles),
-        createJobEventSource: vi.fn().mockReturnValue(new FakeEventSource()),
-        pollIntervalMs: 10,
-      },
-    });
-    const file = new File(["demo"], "demo.mp4", { type: "video/mp4" });
-    const fileInput = wrapper.get<HTMLInputElement>('[data-testid="video-file"]');
-
-    Object.defineProperty(fileInput.element, "files", {
-      value: [file],
-      configurable: true,
-    });
-
-    await fileInput.trigger("change");
-    await wrapper.get("form").trigger("submit");
-    await vi.runOnlyPendingTimersAsync();
-    await wrapper.vm.$nextTick();
-
-    const video = wrapper.get<HTMLVideoElement>("video");
-    Object.defineProperty(video.element, "currentTime", {
-      value: 15,
-      writable: true,
-      configurable: true,
-    });
-    await video.trigger("timeupdate");
-    await wrapper.vm.$nextTick();
-
-    const meta = wrapper.get('[data-testid="live-subtitle-meta"]').text();
-    expect(meta).toContain("当前 #2");
-    expect(meta).toContain("00:14.000");
-    expect(meta).toContain("00:18.500");
   });
 
   it("shows an error when job creation fails", async () => {

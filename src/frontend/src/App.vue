@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from "vue";
 
+import InsightPanel from "./components/InsightPanel.vue";
 import JobStatus from "./components/JobStatus.vue";
 import SubtitlePanel from "./components/SubtitlePanel.vue";
 import UploadPanel from "./components/UploadPanel.vue";
 import VideoPlayer from "./components/VideoPlayer.vue";
+import { generateInsight as defaultGenerateInsight } from "./api/insights";
 import {
   createJob as defaultCreateJob,
   getJob as defaultGetJob,
@@ -17,6 +19,7 @@ import {
   type JobEvent,
 } from "./api/jobEvents";
 import { getSubtitles as defaultGetSubtitles } from "./api/subtitles";
+import type { InsightItem, InsightRead } from "./types/insight";
 import { isFinishedJob, statusLabel, type JobRead } from "./types/job";
 import { formatCueTime, type SubtitleCue } from "./types/subtitle";
 
@@ -25,6 +28,7 @@ const props = withDefaults(
     createJob?: (input: CreateJobInput) => Promise<JobRead>;
     getJob?: (jobId: string) => Promise<JobRead>;
     getSubtitles?: (jobId: string) => Promise<SubtitleCue[]>;
+    generateInsight?: (jobId: string) => Promise<InsightRead>;
     createJobEventSource?: (jobId: string, factory?: EventSourceFactory) => EventSource;
     pollIntervalMs?: number;
   }>(),
@@ -32,6 +36,7 @@ const props = withDefaults(
     createJob: defaultCreateJob,
     getJob: defaultGetJob,
     getSubtitles: defaultGetSubtitles,
+    generateInsight: defaultGenerateInsight,
     createJobEventSource: defaultCreateJobEventSource,
     pollIntervalMs: 2000,
   },
@@ -39,10 +44,12 @@ const props = withDefaults(
 
 const currentJob = ref<JobRead | null>(null);
 const subtitles = ref<SubtitleCue[]>([]);
+const insight = ref<InsightRead | null>(null);
 const liveSubtitle = ref<SubtitleCue | null>(null);
 const videoPlayer = ref<{ seekTo: (seconds: number) => void } | null>(null);
 const videoCurrentTime = ref(0);
 const isSubmitting = ref(false);
+const isGeneratingInsight = ref(false);
 const appError = ref<string | null>(null);
 const eventStreamState = ref<"idle" | "open" | "closed">("idle");
 let pollTimer: number | null = null;
@@ -60,6 +67,7 @@ const topbarStatusLabel = computed(() =>
 );
 const topbarProgressLabel = computed(() => `${currentJob.value?.progress ?? 0}%`);
 const topbarSubtitleCountLabel = computed(() => `${subtitles.value.length} 条字幕`);
+const canGenerateInsight = computed(() => currentJob.value?.status === "done");
 
 function clearPollTimer(): void {
   if (pollTimer !== null) {
@@ -119,6 +127,28 @@ function handleSubtitleSelect(cue: SubtitleCue): void {
   videoPlayer.value?.seekTo(cue.start);
   videoCurrentTime.value = cue.start;
   liveSubtitle.value = cue;
+}
+
+function handleInsightSelect(item: InsightItem): void {
+  videoPlayer.value?.seekTo(item.start);
+  videoCurrentTime.value = item.start;
+}
+
+async function handleGenerateInsight(): Promise<void> {
+  if (!currentJob.value) {
+    return;
+  }
+
+  isGeneratingInsight.value = true;
+  appError.value = null;
+
+  try {
+    insight.value = await props.generateInsight(currentJob.value.id);
+  } catch (error) {
+    appError.value = error instanceof Error ? error.message : "知识笔记生成失败。";
+  } finally {
+    isGeneratingInsight.value = false;
+  }
 }
 
 async function applyJobEvent(event: JobEvent): Promise<void> {
@@ -224,6 +254,7 @@ async function handleUpload(input: CreateJobInput): Promise<void> {
 
   try {
     subtitles.value = [];
+    insight.value = null;
     liveSubtitle.value = null;
     videoCurrentTime.value = 0;
     const job = await props.createJob(input);
@@ -331,6 +362,13 @@ onBeforeUnmount(() => {
             :srt-url="currentJob?.srt_download_url ?? null"
             :active-cue-index="activeSubtitle?.index ?? null"
             @select="handleSubtitleSelect"
+          />
+          <InsightPanel
+            :insight="insight"
+            :is-loading="isGeneratingInsight"
+            :can-generate="canGenerateInsight"
+            @generate="handleGenerateInsight"
+            @select-item="handleInsightSelect"
           />
         </aside>
       </div>

@@ -17,7 +17,13 @@ def test_health_endpoint_returns_service_status():
 
 
 def test_app_registers_jobs_api_router_and_uses_configured_storage(tmp_path):
-    client = TestClient(create_app(storage_root=tmp_path, use_real_worker=False))
+    client = TestClient(
+        create_app(
+            storage_root=tmp_path,
+            use_real_worker=False,
+            use_langchain_insight_agent=False,
+        )
+    )
 
     response = client.post(
         "/api/jobs",
@@ -32,7 +38,13 @@ def test_app_registers_jobs_api_router_and_uses_configured_storage(tmp_path):
 
 
 def test_app_upload_job_generates_mock_subtitles(tmp_path):
-    client = TestClient(create_app(storage_root=tmp_path, use_real_worker=False))
+    client = TestClient(
+        create_app(
+            storage_root=tmp_path,
+            use_real_worker=False,
+            use_langchain_insight_agent=False,
+        )
+    )
 
     created = client.post(
         "/api/jobs",
@@ -58,7 +70,13 @@ def test_app_registers_subtitles_api_router():
 
 
 def test_app_streams_mock_job_events(tmp_path):
-    client = TestClient(create_app(storage_root=tmp_path, use_real_worker=False))
+    client = TestClient(
+        create_app(
+            storage_root=tmp_path,
+            use_real_worker=False,
+            use_langchain_insight_agent=False,
+        )
+    )
 
     created = client.post(
         "/api/jobs",
@@ -70,3 +88,26 @@ def test_app_streams_mock_job_events(tmp_path):
     assert response.headers["content-type"].startswith("text/event-stream")
     assert "event: subtitle_partial" in response.text
     assert "Sample source subtitle." in response.text
+
+
+def test_app_registers_insights_api_router(tmp_path):
+    client = TestClient(
+        create_app(
+            storage_root=tmp_path,
+            use_real_worker=False,
+            use_langchain_insight_agent=False,
+        )
+    )
+
+    created = client.post(
+        "/api/jobs",
+        files={"file": ("meeting.mp4", b"fake video", "video/mp4")},
+    ).json()
+
+    response = client.post("/api/jobs/{0}/insights".format(created["id"]))
+
+    assert response.status_code == 200
+    assert response.json()["job_id"] == created["id"]
+    assert response.json()["markdown_url"] == "/api/jobs/{0}/insights/markdown".format(
+        created["id"]
+    )

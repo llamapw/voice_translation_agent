@@ -18,6 +18,9 @@ def clear_settings_environment(monkeypatch):
         "QINIU_AI_API_KEY",
         "qiniu_ai_api_key",
         "USE_REAL_WORKER",
+        "USE_LANGCHAIN_INSIGHT_AGENT",
+        "INSIGHT_AGENT_MODEL",
+        "INSIGHT_AGENT_TIMEOUT_SECONDS",
     ]:
         monkeypatch.delenv(name, raising=False)
 
@@ -40,6 +43,9 @@ def test_settings_provides_default_runtime_values(monkeypatch):
     assert settings.llm_base_url == "https://api.qnaigc.com/v1"
     assert settings.llm_api_key is None
     assert settings.use_real_worker is False
+    assert settings.use_langchain_insight_agent is False
+    assert settings.insight_agent_model == "qwen-turbo"
+    assert settings.insight_agent_timeout_seconds == 60
 
 
 def test_settings_reads_environment_overrides(monkeypatch):
@@ -57,6 +63,9 @@ def test_settings_reads_environment_overrides(monkeypatch):
     monkeypatch.setenv("LLM_BASE_URL", "https://example.test/v1")
     monkeypatch.setenv("LLM_API_KEY", "llm-secret")
     monkeypatch.setenv("USE_REAL_WORKER", "true")
+    monkeypatch.setenv("USE_LANGCHAIN_INSIGHT_AGENT", "true")
+    monkeypatch.setenv("INSIGHT_AGENT_MODEL", "custom-insight-model")
+    monkeypatch.setenv("INSIGHT_AGENT_TIMEOUT_SECONDS", "90")
 
     settings = Settings()
 
@@ -76,6 +85,9 @@ def test_settings_reads_environment_overrides(monkeypatch):
     assert settings.llm_base_url == "https://example.test/v1"
     assert settings.llm_api_key == "llm-secret"
     assert settings.use_real_worker is True
+    assert settings.use_langchain_insight_agent is True
+    assert settings.insight_agent_model == "custom-insight-model"
+    assert settings.insight_agent_timeout_seconds == 90
 
 
 def test_settings_reads_values_from_env_file(tmp_path, monkeypatch):
@@ -93,6 +105,15 @@ def test_settings_reads_values_from_env_file(tmp_path, monkeypatch):
     assert settings.app_name == "file_service"
     assert settings.cors_origins == ["http://localhost:5173", "http://localhost:4173"]
     assert settings.use_real_worker is True
+
+
+def test_insight_agent_model_defaults_to_llm_model(monkeypatch):
+    clear_settings_environment(monkeypatch)
+    monkeypatch.setenv("LLM_MODEL", "shared-llm")
+
+    settings = Settings(env_file=None)
+
+    assert settings.insight_agent_model == "shared-llm"
 
 
 def test_environment_variables_override_env_file(tmp_path, monkeypatch):
