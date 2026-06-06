@@ -121,7 +121,7 @@ function handleSubtitleSelect(cue: SubtitleCue): void {
   liveSubtitle.value = cue;
 }
 
-function applyJobEvent(event: JobEvent): void {
+async function applyJobEvent(event: JobEvent): Promise<void> {
   if (event.type === "subtitle_partial" && event.data.cue) {
     appendSubtitle(event.data.cue);
     return;
@@ -162,6 +162,9 @@ function applyJobEvent(event: JobEvent): void {
         progress: 100,
         message: "Subtitle task completed.",
       };
+      if (subtitles.value.length === 0) {
+        await loadSubtitles(currentJob.value.id);
+      }
     }
     clearPollTimer();
     return;
@@ -174,7 +177,7 @@ function applyJobEvent(event: JobEvent): void {
 
 function addJobEventListener(source: EventSource, eventName: JobEvent["type"]): void {
   source.addEventListener(eventName, (message) => {
-    applyJobEvent(parseJobEvent((message as MessageEvent).data));
+    void applyJobEvent(parseJobEvent((message as MessageEvent).data));
   });
 }
 

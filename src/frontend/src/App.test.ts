@@ -233,6 +233,49 @@ describe("App", () => {
     expect(getJob).not.toHaveBeenCalled();
   });
 
+  it("loads subtitles when SSE completes without subtitle events", async () => {
+    const createdJob = buildJob();
+    const createJob = vi.fn().mockResolvedValue(createdJob);
+    const getSubtitles = vi.fn().mockResolvedValue(subtitles);
+    const eventSource = new FakeEventSource();
+    const wrapper = mount(App, {
+      props: {
+        createJob,
+        getJob: vi.fn(),
+        getSubtitles,
+        createJobEventSource: vi.fn().mockReturnValue(eventSource),
+      },
+    });
+    const file = new File(["demo"], "demo.mp4", { type: "video/mp4" });
+    const fileInput = wrapper.get<HTMLInputElement>('[data-testid="video-file"]');
+
+    Object.defineProperty(fileInput.element, "files", {
+      value: [file],
+      configurable: true,
+    });
+
+    await fileInput.trigger("change");
+    await wrapper.get("form").trigger("submit");
+    await wrapper.vm.$nextTick();
+
+    eventSource.emit({
+      type: "job_done",
+      job_id: "job_test",
+      data: {},
+    });
+    eventSource.emit({
+      type: "job_closed",
+      job_id: "job_test",
+      data: {},
+    });
+    await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
+
+    expect(getSubtitles).toHaveBeenCalledWith("job_test");
+    expect(wrapper.get('[data-testid="live-subtitle"]').text()).toContain("Hello");
+    expect(wrapper.get('[data-testid="live-subtitle"]').text()).toContain("你好");
+  });
+
   it("marks the current job failed when a failed SSE event arrives", async () => {
     const createdJob = buildJob({
       status: "transcribing",
