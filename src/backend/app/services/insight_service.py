@@ -2,7 +2,8 @@ import json
 from pathlib import Path
 from typing import List, Optional
 
-from app.agents.insight_agent import InsightAgent, insight_agent
+from app.agents.insight_agent import InsightAgent, LangChainInsightAgent, insight_agent
+from app.core.config import settings
 from app.core.paths import build_job_paths
 from app.models.insight import InsightRead
 from app.models.subtitle import SubtitleCue
@@ -15,6 +16,23 @@ class InsightSourceNotFoundError(FileNotFoundError):
 
 class InsightNotFoundError(FileNotFoundError):
     pass
+
+
+def create_insight_agent(use_langchain: bool) -> InsightAgent:
+    if use_langchain:
+        return LangChainInsightAgent()
+    return InsightAgent()
+
+
+class ConfiguredInsightAgent(InsightAgent):
+    def __init__(self, use_langchain: bool) -> None:
+        self._use_langchain = use_langchain
+        self._selected_agent: Optional[InsightAgent] = None
+
+    def generate(self, job_id: str, cues: List[SubtitleCue]) -> InsightRead:
+        if self._selected_agent is None:
+            self._selected_agent = create_insight_agent(self._use_langchain)
+        return self._selected_agent.generate(job_id, cues)
 
 
 class InsightService:
@@ -62,4 +80,8 @@ class InsightService:
         return [SubtitleCue.model_validate(raw_cue) for raw_cue in raw_cues]
 
 
-insight_service = InsightService()
+insight_service = InsightService(
+    agent=ConfiguredInsightAgent(
+        use_langchain=settings.use_langchain_insight_agent,
+    )
+)

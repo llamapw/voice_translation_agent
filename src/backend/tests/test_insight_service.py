@@ -5,8 +5,10 @@ import pytest
 from app.core.paths import build_job_paths
 from app.models.insight import InsightRead
 from app.services.insight_service import (
+    ConfiguredInsightAgent,
     InsightService,
     InsightSourceNotFoundError,
+    create_insight_agent,
 )
 
 
@@ -24,6 +26,10 @@ class StubInsightAgent:
             items=[],
             markdown_url="/api/jobs/{0}/insights/markdown".format(job_id),
         )
+
+
+class FakeLangChainInsightAgent(StubInsightAgent):
+    pass
 
 
 def test_generate_basic_insight_reads_subtitles_and_writes_outputs(tmp_path):
@@ -105,3 +111,47 @@ def test_generate_basic_insight_delegates_generation_to_agent(tmp_path):
     assert insight.summary == "自定义洞察摘要。"
     assert agent.received_job_id == "job_test"
     assert agent.received_cues[0].target_text == "运动会产生热量。"
+
+
+def test_create_insight_agent_returns_basic_agent_when_langchain_is_disabled():
+    agent = create_insight_agent(use_langchain=False)
+
+    assert agent.__class__.__name__ == "InsightAgent"
+
+
+def test_create_insight_agent_returns_langchain_agent_when_enabled(monkeypatch):
+    import app.services.insight_service as insight_service_module
+
+    monkeypatch.setattr(
+        insight_service_module,
+        "LangChainInsightAgent",
+        FakeLangChainInsightAgent,
+    )
+
+    agent = create_insight_agent(use_langchain=True)
+
+    assert isinstance(agent, FakeLangChainInsightAgent)
+
+
+def test_configured_insight_agent_defers_selected_agent_until_generate(monkeypatch):
+    import app.services.insight_service as insight_service_module
+
+    created = []
+
+    def fake_create_insight_agent(use_langchain):
+        created.append(use_langchain)
+        return StubInsightAgent()
+
+    monkeypatch.setattr(
+        insight_service_module,
+        "create_insight_agent",
+        fake_create_insight_agent,
+    )
+    agent = ConfiguredInsightAgent(use_langchain=True)
+
+    assert created == []
+
+    insight = agent.generate("job_test", [])
+
+    assert created == [True]
+    assert insight.summary == "自定义洞察摘要。"
