@@ -320,10 +320,25 @@ onBeforeUnmount(() => {
     <section class="app-workbench">
       <header class="app-topbar" data-testid="app-topbar">
         <div class="brand-block">
-          <p class="eyebrow">Subtitle workflow</p>
-          <h1>Voice Translation Agent</h1>
-          <p class="summary">Upload, transcribe, translate, and export subtitles from one focused workspace.</p>
+          <p class="eyebrow">Voice Translation Agent</p>
+          <h1>实时字幕工作台</h1>
+          <p class="summary">上传视频、同步字幕、沉淀知识笔记，在一个界面里完成从听懂到复盘。</p>
         </div>
+
+        <ol class="workflow-steps" data-testid="workflow-steps" aria-label="工作流阶段">
+          <li>
+            <span>01</span>
+            <strong>导入</strong>
+          </li>
+          <li>
+            <span>02</span>
+            <strong>转写翻译</strong>
+          </li>
+          <li>
+            <span>03</span>
+            <strong>知识整理</strong>
+          </li>
+        </ol>
 
         <div class="topbar-status">
           <div class="topbar-metric">

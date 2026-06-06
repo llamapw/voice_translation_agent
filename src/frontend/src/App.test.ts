@@ -124,9 +124,35 @@ describe("App", () => {
     const wrapper = mount(App);
 
     expect(wrapper.find('[data-testid="app-topbar"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="workflow-steps"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="control-rail"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="preview-stage"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="subtitle-rail"]').exists()).toBe(true);
+  });
+
+  it("renders the redesigned workbench identity and workflow stages", () => {
+    const wrapper = mount(App);
+    const topbar = wrapper.get('[data-testid="app-topbar"]');
+    const workflowSteps = wrapper.get('[data-testid="workflow-steps"]');
+
+    expect(topbar.text()).toContain("实时字幕工作台");
+    expect(topbar.text()).toContain("上传视频、同步字幕、沉淀知识笔记");
+    expect(workflowSteps.text()).toContain("导入");
+    expect(workflowSteps.text()).toContain("转写翻译");
+    expect(workflowSteps.text()).toContain("知识整理");
+  });
+
+  it("switches the result rail between subtitles and notes", async () => {
+    const wrapper = mount(App);
+
+    expect(wrapper.get('[data-testid="result-tabs"]').text()).toContain("字幕");
+    expect(wrapper.get('[data-testid="subtitle-panel"]').isVisible()).toBe(true);
+    expect(wrapper.find('[data-testid="insight-panel"]').exists()).toBe(false);
+
+    await wrapper.get('[data-testid="result-tab-insight"]').trigger("click");
+
+    expect(wrapper.get('[data-testid="insight-panel"]').isVisible()).toBe(true);
+    expect(wrapper.find('[data-testid="subtitle-panel"]').exists()).toBe(false);
   });
 
   it("renders localized topbar status metrics after a job is loaded", async () => {
