@@ -132,6 +132,24 @@ describe("InsightPanel", () => {
     );
   });
 
+  it("marks active insight and glossary items", () => {
+    const wrapper = mount(InsightPanel, {
+      props: {
+        insight,
+        isLoading: false,
+        canGenerate: true,
+        activeItemId: "term_1",
+      },
+    });
+
+    expect(wrapper.get('[data-testid="glossary-item-term_1"]').attributes("data-active")).toBe(
+      "true",
+    );
+    expect(wrapper.get('[data-testid="insight-item-term_1"]').attributes("data-active")).toBe(
+      "true",
+    );
+  });
+
   it("emits selected insight items", async () => {
     const wrapper = mount(InsightPanel, {
       props: {

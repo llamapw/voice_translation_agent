@@ -62,6 +62,12 @@ const activeSubtitle = computed(
       (cue) => videoCurrentTime.value >= cue.start && videoCurrentTime.value <= cue.end,
     ) ?? null,
 );
+const activeInsightItem = computed(
+  () =>
+    insight.value?.items.find(
+      (item) => videoCurrentTime.value >= item.start && videoCurrentTime.value <= item.end,
+    ) ?? null,
+);
 const displayedLiveSubtitle = computed(() => activeSubtitle.value ?? liveSubtitle.value);
 const displayedLiveSubtitleText = computed(() => {
   const cue = displayedLiveSubtitle.value;
@@ -403,6 +409,7 @@ onBeforeUnmount(() => {
             :insight="insight"
             :is-loading="isGeneratingInsight"
             :can-generate="canGenerateInsight"
+            :active-item-id="activeInsightItem?.id ?? null"
             @generate="handleGenerateInsight"
             @select-item="handleInsightSelect"
           />

@@ -9,6 +9,7 @@ const props = defineProps<{
   insight: InsightRead | null;
   isLoading: boolean;
   canGenerate: boolean;
+  activeItemId?: string | null;
 }>();
 
 defineEmits<{
@@ -93,6 +94,9 @@ const glossaryTerms = computed(() => uniqueTermNames(termItems.value.map((item) 
             v-for="item in termItems"
             :key="item.id"
             class="glossary-item"
+            :data-active="item.id === activeItemId"
+            :data-testid="`glossary-item-${item.id}`"
+            :aria-current="item.id === activeItemId ? 'true' : undefined"
             role="button"
             tabindex="0"
             @click="$emit('select-item', item)"
@@ -122,6 +126,9 @@ const glossaryTerms = computed(() => uniqueTermNames(termItems.value.map((item) 
             v-for="item in group.items"
             :key="item.id"
             class="insight-item"
+            :data-active="item.id === activeItemId"
+            :data-testid="`insight-item-${item.id}`"
+            :aria-current="item.id === activeItemId ? 'true' : undefined"
             role="button"
             tabindex="0"
             @click="$emit('select-item', item)"
