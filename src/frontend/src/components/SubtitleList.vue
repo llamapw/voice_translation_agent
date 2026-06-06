@@ -3,6 +3,11 @@ import { formatCueTime, type SubtitleCue } from "../types/subtitle";
 
 defineProps<{
   cues: SubtitleCue[];
+  activeCueIndex?: number | null;
+}>();
+
+defineEmits<{
+  select: [cue: SubtitleCue];
 }>();
 </script>
 
@@ -13,7 +18,16 @@ defineProps<{
     </div>
 
     <ol v-else>
-      <li v-for="cue in cues" :key="cue.index" class="subtitle-item">
+      <li
+        v-for="cue in cues"
+        :key="cue.index"
+        class="subtitle-item"
+        :data-active="cue.index === activeCueIndex"
+        role="button"
+        tabindex="0"
+        @click="$emit('select', cue)"
+        @keydown.enter="$emit('select', cue)"
+      >
         <div class="cue-meta">
           <strong>#{{ cue.index }}</strong>
           <span>{{ formatCueTime(cue.start) }} - {{ formatCueTime(cue.end) }}</span>

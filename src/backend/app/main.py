@@ -3,9 +3,11 @@ from typing import Dict, Optional
 
 from fastapi import FastAPI
 
+from app.api.routes_events import create_events_router
 from app.api.routes_jobs import create_jobs_router
 from app.api.routes_subtitles import create_subtitles_router
 from app.core.config import settings
+from app.services.job_event_service import job_event_service
 from app.services.job_service import job_service
 from app.services.media_service import media_service
 from app.services.subtitle_service import subtitle_service
@@ -29,6 +31,10 @@ def create_app(
     )
     created_app.include_router(
         create_subtitles_router(storage_root=storage_root),
+        prefix="/api/jobs",
+    )
+    created_app.include_router(
+        create_events_router(event_service=job_event_service),
         prefix="/api/jobs",
     )
 

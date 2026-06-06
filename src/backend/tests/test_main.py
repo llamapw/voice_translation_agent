@@ -55,3 +55,18 @@ def test_app_registers_subtitles_api_router():
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Subtitles not found."}
+
+
+def test_app_streams_mock_job_events(tmp_path):
+    client = TestClient(create_app(storage_root=tmp_path, use_real_worker=False))
+
+    created = client.post(
+        "/api/jobs",
+        files={"file": ("meeting.mp4", b"fake video", "video/mp4")},
+    ).json()
+    response = client.get("/api/jobs/{0}/events".format(created["id"]))
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert "event: subtitle_partial" in response.text
+    assert "Sample source subtitle." in response.text

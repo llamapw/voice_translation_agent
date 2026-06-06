@@ -85,6 +85,7 @@ h1 {
 .upload-panel,
 .job-status-panel,
 .video-panel,
+.live-subtitle-panel,
 .subtitle-panel {
   display: grid;
   gap: 18px;
@@ -273,11 +274,58 @@ h2 {
   line-height: 1.5;
 }
 
+.stream-state {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #b8dbe1;
+  border-radius: 6px;
+  background: #eef9fb;
+  color: #155e66;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.stream-state[data-state="closed"] {
+  border-color: #d9e2ea;
+  background: #f8fafc;
+  color: #52606d;
+}
+
 .video-panel video {
   width: 100%;
   max-height: 420px;
   border-radius: 6px;
   background: #111827;
+}
+
+.live-subtitle-panel {
+  gap: 14px;
+  border-color: #cfe0d6;
+  background: #fbfefc;
+}
+
+.live-subtitle-body {
+  display: grid;
+  gap: 8px;
+  min-height: 92px;
+  align-content: center;
+  padding: 16px;
+  border: 1px solid #d8e7dd;
+  border-radius: 6px;
+  background: #f4fbf6;
+}
+
+.live-subtitle-source,
+.live-subtitle-target {
+  margin: 0;
+  color: #172033;
+  font-size: 18px;
+  line-height: 1.55;
+}
+
+.live-subtitle-target {
+  color: #1f5d66;
+  font-weight: 800;
 }
 
 .download-link,
@@ -320,6 +368,24 @@ h2 {
   border: 1px solid #d9e2ea;
   border-radius: 6px;
   background: #fbfdff;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.subtitle-item:hover,
+.subtitle-item:focus-visible {
+  border-color: #93c5cf;
+  background: #f4fbfc;
+  outline: none;
+}
+
+.subtitle-item[data-active="true"] {
+  border-color: #1f6f78;
+  background: #eef9fb;
+  box-shadow: inset 3px 0 0 #1f6f78;
 }
 
 .cue-meta {

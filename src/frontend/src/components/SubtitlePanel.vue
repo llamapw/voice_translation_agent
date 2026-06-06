@@ -5,6 +5,11 @@ import type { SubtitleCue } from "../types/subtitle";
 defineProps<{
   cues: SubtitleCue[];
   srtUrl: string | null;
+  activeCueIndex?: number | null;
+}>();
+
+defineEmits<{
+  select: [cue: SubtitleCue];
 }>();
 </script>
 
@@ -22,6 +27,10 @@ defineProps<{
       <span v-else class="download-disabled">SRT 尚未生成</span>
     </div>
 
-    <SubtitleList :cues="cues" />
+    <SubtitleList
+      :cues="cues"
+      :active-cue-index="activeCueIndex"
+      @select="$emit('select', $event)"
+    />
   </section>
 </template>

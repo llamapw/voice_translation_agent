@@ -39,4 +39,20 @@ describe("SubtitlePanel", () => {
 
     expect(wrapper.text()).toContain("SRT 尚未生成");
   });
+
+  it("passes active cue state and selected cues through", async () => {
+    const wrapper = mount(SubtitlePanel, {
+      props: {
+        cues,
+        srtUrl: null,
+        activeCueIndex: 1,
+      },
+    });
+
+    expect(wrapper.get(".subtitle-item").attributes("data-active")).toBe("true");
+
+    await wrapper.get(".subtitle-item").trigger("click");
+
+    expect(wrapper.emitted("select")?.[0]).toEqual([cues[0]]);
+  });
 });
