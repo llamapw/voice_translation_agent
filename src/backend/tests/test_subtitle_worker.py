@@ -1,6 +1,8 @@
 from app.core.paths import build_job_paths
 from app.models.job import JobCreateOptions, JobStatus
+from app.models.job_event import JobEventType
 from app.models.subtitle import SubtitleCue
+from app.services.job_event_service import JobEventService
 from app.services.job_service import JobService
 from app.services.subtitle_service import SubtitleService
 from app.workers.subtitle_worker import run_mock_subtitle_job, run_subtitle_job
@@ -75,6 +77,41 @@ def test_run_mock_subtitle_job_marks_job_done_and_writes_outputs(tmp_path):
     assert paths.subtitles_json.exists()
     assert paths.output_srt.exists()
     assert "Sample source subtitle." in paths.output_srt.read_text(encoding="utf-8")
+
+
+def test_run_mock_subtitle_job_publishes_sse_events(tmp_path):
+    job_service = JobService()
+    subtitle_service = SubtitleService()
+    event_service = JobEventService()
+    job = job_service.create_job(options=JobCreateOptions(), original_filename="input.mp4")
+    paths = build_job_paths(job.id, storage_root=tmp_path)
+
+    run_mock_subtitle_job(
+        job_id=job.id,
+        paths=paths,
+        job_service=job_service,
+        subtitle_service=subtitle_service,
+        event_service=event_service,
+    )
+
+    events = []
+    while True:
+        event = event_service.next_event(job.id, timeout=0.01)
+        if event is None:
+            break
+        events.append(event)
+        if event.type == JobEventType.job_closed:
+            break
+
+    assert [event.type for event in events] == [
+        JobEventType.job_status,
+        JobEventType.job_status,
+        JobEventType.job_status,
+        JobEventType.subtitle_partial,
+        JobEventType.job_done,
+        JobEventType.job_closed,
+    ]
+    assert events[3].data["cue"]["source_text"] == "Sample source subtitle."
 
 
 def test_run_subtitle_job_processes_video_with_injected_services(tmp_path):

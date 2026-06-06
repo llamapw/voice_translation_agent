@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.core.paths import JobPaths, build_job_paths, get_default_storage_root
 from app.models.job import JobCreateOptions, JobRead
 from app.services.asr_service import ASRService, asr_service
+from app.services.job_event_service import JobEventService, job_event_service
 from app.services.job_service import JobNotFoundError, JobService, job_service
 from app.services.llm_service import LLMService, llm_service
 from app.services.media_service import MediaService, media_service
@@ -38,6 +39,7 @@ def create_jobs_router(
     storage_root: Optional[Path] = None,
     use_real_worker: bool = settings.use_real_worker,
     real_worker: RealWorker = run_subtitle_job,
+    event_service: JobEventService = job_event_service,
 ) -> APIRouter:
     router = APIRouter()
     resolved_storage_root = storage_root or get_default_storage_root()
@@ -91,6 +93,7 @@ def create_jobs_router(
                 paths,
                 job_service,
                 subtitle_service,
+                event_service,
             )
         return job
 

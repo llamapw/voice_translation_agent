@@ -1,7 +1,11 @@
+from typing import Optional
+
 from app.core.paths import JobPaths
 from app.models.job import JobRead, JobStatus
+from app.models.job_event import JobEvent
 from app.models.subtitle import SubtitleCue
 from app.services.asr_service import ASRService
+from app.services.job_event_service import JobEventService
 from app.services.job_service import JobService
 from app.services.llm_service import LLMService
 from app.services.media_service import MediaService
@@ -71,6 +75,7 @@ def run_mock_subtitle_job(
     paths: JobPaths,
     job_service: JobService,
     subtitle_service: SubtitleService,
+    event_service: Optional[JobEventService] = None,
 ) -> JobRead:
     job_service.update_job(
         job_id,
@@ -78,18 +83,45 @@ def run_mock_subtitle_job(
         progress=20,
         message="Extracting audio from video.",
     )
+    if event_service is not None:
+        event_service.publish(
+            JobEvent.status(
+                job_id=job_id,
+                status=JobStatus.extracting_audio.value,
+                progress=20,
+                message="Extracting audio from video.",
+            )
+        )
     job_service.update_job(
         job_id,
         status=JobStatus.transcribing,
         progress=50,
         message="Transcribing speech.",
     )
+    if event_service is not None:
+        event_service.publish(
+            JobEvent.status(
+                job_id=job_id,
+                status=JobStatus.transcribing.value,
+                progress=50,
+                message="Transcribing speech.",
+            )
+        )
     job_service.update_job(
         job_id,
         status=JobStatus.generating_subtitle,
         progress=90,
         message="Generating subtitle files.",
     )
+    if event_service is not None:
+        event_service.publish(
+            JobEvent.status(
+                job_id=job_id,
+                status=JobStatus.generating_subtitle.value,
+                progress=90,
+                message="Generating subtitle files.",
+            )
+        )
 
     cues = [
         SubtitleCue(
@@ -100,12 +132,19 @@ def run_mock_subtitle_job(
             target_text="示例目标字幕。",
         )
     ]
+    if event_service is not None:
+        for cue in cues:
+            event_service.publish(JobEvent.subtitle_partial(job_id=job_id, cue=cue))
     subtitle_service.write_subtitles_json(cues, paths.subtitles_json)
     subtitle_service.write_srt(cues, paths.output_srt)
 
-    return job_service.update_job(
+    result = job_service.update_job(
         job_id,
         status=JobStatus.done,
         progress=100,
         message="Subtitle task completed.",
     )
+    if event_service is not None:
+        event_service.publish(JobEvent.done(job_id=job_id))
+        event_service.close(job_id)
+    return result
