@@ -41,6 +41,7 @@ const currentJob = ref<JobRead | null>(null);
 const subtitles = ref<SubtitleCue[]>([]);
 const isSubmitting = ref(false);
 const appError = ref<string | null>(null);
+const eventStreamState = ref<"idle" | "open" | "closed">("idle");
 let pollTimer: number | null = null;
 let eventSource: EventSource | null = null;
 
@@ -55,6 +56,7 @@ function closeEventSource(): void {
   if (eventSource !== null) {
     eventSource.close();
     eventSource = null;
+    eventStreamState.value = "closed";
   }
 }
 
@@ -140,6 +142,7 @@ function addJobEventListener(source: EventSource, eventName: JobEvent["type"]): 
 function startEventStream(jobId: string): void {
   closeEventSource();
   eventSource = props.createJobEventSource(jobId);
+  eventStreamState.value = "open";
   for (const eventName of [
     "job_status",
     "subtitle_partial",
@@ -173,6 +176,7 @@ function startPolling(jobId: string): void {
 async function handleUpload(input: CreateJobInput): Promise<void> {
   isSubmitting.value = true;
   appError.value = null;
+  eventStreamState.value = "idle";
   clearPollTimer();
   closeEventSource();
 
@@ -210,6 +214,13 @@ onBeforeUnmount(() => {
       <div class="workspace-grid">
         <div class="control-column">
           <UploadPanel :is-submitting="isSubmitting" @submit="handleUpload" />
+          <p
+            v-if="eventStreamState !== 'idle'"
+            class="stream-state"
+            :data-state="eventStreamState"
+          >
+            {{ eventStreamState === "open" ? "正在实时接收字幕" : "实时连接已关闭" }}
+          </p>
           <p v-if="appError" class="error-message">{{ appError }}</p>
         </div>
 

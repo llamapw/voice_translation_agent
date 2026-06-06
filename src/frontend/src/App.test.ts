@@ -142,6 +142,10 @@ describe("App", () => {
 
     await fileInput.trigger("change");
     await wrapper.get("form").trigger("submit");
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.text()).toContain("正在实时接收字幕");
+
     eventSource.emit({
       type: "subtitle_partial",
       job_id: "job_test",
@@ -162,6 +166,7 @@ describe("App", () => {
     expect(createJobEventSource).toHaveBeenCalledWith("job_test");
     expect(wrapper.text()).toContain("Hello");
     expect(wrapper.text()).toContain("你好");
+    expect(wrapper.text()).toContain("实时连接已关闭");
     expect(eventSource.closed).toBe(true);
     expect(getSubtitles).not.toHaveBeenCalled();
     expect(getJob).not.toHaveBeenCalled();
