@@ -3,6 +3,18 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App.vue";
 import type { JobRead } from "./types/job";
+import type { SubtitleCue } from "./types/subtitle";
+
+const subtitles: SubtitleCue[] = [
+  {
+    index: 1,
+    start: 0.55,
+    end: 13.51,
+    source_text: "Hello",
+    target_text: "你好",
+    display_text: "Hello\n你好",
+  },
+];
 
 function buildJob(overrides: Partial<JobRead> = {}): JobRead {
   return {
@@ -47,10 +59,12 @@ describe("App", () => {
     });
     const createJob = vi.fn().mockResolvedValue(createdJob);
     const getJob = vi.fn().mockResolvedValue(doneJob);
+    const getSubtitles = vi.fn().mockResolvedValue(subtitles);
     const wrapper = mount(App, {
       props: {
         createJob,
         getJob,
+        getSubtitles,
         pollIntervalMs: 10,
       },
     });
@@ -69,8 +83,13 @@ describe("App", () => {
 
     expect(createJob).toHaveBeenCalledOnce();
     expect(getJob).toHaveBeenCalledWith("job_test");
+    expect(getSubtitles).toHaveBeenCalledWith("job_test");
     expect(wrapper.text()).toContain("已完成");
     expect(wrapper.text()).toContain("Subtitle task completed.");
+    expect(wrapper.text()).toContain("Hello");
+    expect(wrapper.text()).toContain("你好");
+    expect(wrapper.get("video").attributes("src")).toBe("/api/jobs/job_test/video");
+    expect(wrapper.get("a").attributes("href")).toBe("/api/jobs/job_test/srt");
   });
 
   it("shows an error when job creation fails", async () => {
