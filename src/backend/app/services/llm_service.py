@@ -6,6 +6,7 @@ from app.models.subtitle import SubtitleCue
 
 
 TextGenerator = Callable[[str, str], str]
+CueCallback = Callable[[SubtitleCue], None]
 
 
 class LLMError(RuntimeError):
@@ -38,6 +39,7 @@ class LLMService:
         correct: bool,
         target_language: str,
         subtitle_mode: SubtitleMode,
+        on_cue: Optional[CueCallback] = None,
     ) -> List[SubtitleCue]:
         enriched = []
         for cue in cues:
@@ -58,15 +60,16 @@ class LLMService:
             elif subtitle_mode == "source":
                 target_text = source_text
 
-            enriched.append(
-                SubtitleCue(
-                    index=cue.index,
-                    start=cue.start,
-                    end=cue.end,
-                    source_text=source_text,
-                    target_text=target_text,
-                )
+            enriched_cue = SubtitleCue(
+                index=cue.index,
+                start=cue.start,
+                end=cue.end,
+                source_text=source_text,
+                target_text=target_text,
             )
+            enriched.append(enriched_cue)
+            if on_cue is not None:
+                on_cue(enriched_cue)
 
         return enriched
 

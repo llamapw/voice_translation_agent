@@ -127,6 +127,7 @@ def test_create_job_runs_real_worker_when_enabled(tmp_path):
         asr_service,
         llm_service,
         subtitle_service,
+        event_service,
     ):
         calls.append(
             {
@@ -136,6 +137,7 @@ def test_create_job_runs_real_worker_when_enabled(tmp_path):
                 "asr_service": asr_service,
                 "llm_service": llm_service,
                 "subtitle_service": subtitle_service,
+                "event_service": event_service,
             }
         )
         return job_service.update_job(
@@ -163,6 +165,7 @@ def test_create_job_runs_real_worker_when_enabled(tmp_path):
     assert fetched["message"] == "Real worker completed."
     assert len(calls) == 1
     assert calls[0]["job_id"] == created["id"]
+    assert calls[0]["event_service"] is not None
 
 
 def test_read_job_video_returns_uploaded_video_file(tmp_path):
