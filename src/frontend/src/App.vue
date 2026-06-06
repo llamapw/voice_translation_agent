@@ -62,6 +62,34 @@ const activeSubtitle = computed(
     ) ?? null,
 );
 const displayedLiveSubtitle = computed(() => activeSubtitle.value ?? liveSubtitle.value);
+const displayedLiveSubtitleText = computed(() => {
+  const cue = displayedLiveSubtitle.value;
+  const subtitleMode = currentJob.value?.subtitle_mode ?? "bilingual";
+
+  if (!cue) {
+    return null;
+  }
+
+  if (subtitleMode === "target") {
+    return {
+      primary: cue.target_text || cue.source_text,
+      secondary: null,
+    };
+  }
+
+  if (subtitleMode === "source") {
+    return {
+      primary: cue.source_text,
+      secondary: null,
+    };
+  }
+
+  return {
+    primary: cue.source_text,
+    secondary:
+      cue.target_text && cue.target_text !== cue.source_text ? cue.target_text : null,
+  };
+});
 const topbarStatusLabel = computed(() =>
   currentJob.value ? statusLabel[currentJob.value.status] : "等待任务",
 );
@@ -339,15 +367,12 @@ onBeforeUnmount(() => {
                   {{ formatCueTime(displayedLiveSubtitle.end) }}
                 </span>
               </div>
-              <p class="live-subtitle-source">{{ displayedLiveSubtitle.source_text }}</p>
+              <p class="live-subtitle-source">{{ displayedLiveSubtitleText?.primary }}</p>
               <p
-                v-if="
-                  displayedLiveSubtitle.target_text &&
-                  displayedLiveSubtitle.target_text !== displayedLiveSubtitle.source_text
-                "
+                v-if="displayedLiveSubtitleText?.secondary"
                 class="live-subtitle-target"
               >
-                {{ displayedLiveSubtitle.target_text }}
+                {{ displayedLiveSubtitleText.secondary }}
               </p>
             </div>
             <div v-else class="empty-state">
