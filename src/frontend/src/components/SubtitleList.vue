@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ComponentPublicInstance } from "vue";
-import { watch } from "vue";
+import { nextTick, ref, watch } from "vue";
 
 import { formatCueTime, type SubtitleCue } from "../types/subtitle";
 import { buildTermHighlightSegments } from "../utils/termHighlight";
@@ -18,6 +18,7 @@ defineEmits<{
 }>();
 
 const cueItemRefs = new Map<number, HTMLElement>();
+const subtitleListElement = ref<HTMLElement | null>(null);
 
 function formatCueDuration(cue: SubtitleCue): string {
   return `${Math.max(0, cue.end - cue.start).toFixed(2)}s`;
@@ -40,27 +41,37 @@ function scrollActiveCueIntoView(activeCueIndex: number | null | undefined): voi
     return;
   }
 
+  const scrollContainer = subtitleListElement.value;
   const activeCue = cueItemRefs.get(activeCueIndex);
-  if (!activeCue || typeof activeCue.scrollIntoView !== "function") {
+  if (!scrollContainer || !activeCue) {
     return;
   }
 
-  activeCue.scrollIntoView({
-    behavior: "smooth",
-    block: "nearest",
-  });
+  const targetScrollTop =
+    activeCue.offsetTop - scrollContainer.clientHeight / 2 + activeCue.clientHeight / 2;
+  const top = Math.max(0, targetScrollTop);
+  if (typeof scrollContainer.scrollTo === "function") {
+    scrollContainer.scrollTo({
+      top,
+      behavior: "smooth",
+    });
+    return;
+  }
+
+  scrollContainer.scrollTop = top;
 }
 
 watch(
   () => props.activeCueIndex,
-  (activeCueIndex) => {
+  async (activeCueIndex) => {
+    await nextTick();
     scrollActiveCueIntoView(activeCueIndex);
   },
 );
 </script>
 
 <template>
-  <div class="subtitle-list">
+  <div ref="subtitleListElement" class="subtitle-list" data-testid="subtitle-list">
     <div v-if="cues.length === 0" class="subtitle-empty-guide" data-testid="subtitle-empty-guide">
       <div class="subtitle-empty-intro">
         <strong>字幕会在这里生成</strong>

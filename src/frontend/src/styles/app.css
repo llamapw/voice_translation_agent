@@ -888,29 +888,31 @@ h2 {
 }
 
 .subtitle-list::-webkit-scrollbar,
-.insight-body::-webkit-scrollbar,
+.insight-scroll-region::-webkit-scrollbar,
 .upload-panel::-webkit-scrollbar {
   width: 10px;
 }
 
 .subtitle-list::-webkit-scrollbar-track,
-.insight-body::-webkit-scrollbar-track,
+.insight-scroll-region::-webkit-scrollbar-track,
 .upload-panel::-webkit-scrollbar-track {
   background: #edf4f5;
   border-radius: 999px;
 }
 
 .subtitle-list::-webkit-scrollbar-thumb,
-.insight-body::-webkit-scrollbar-thumb,
+.insight-scroll-region::-webkit-scrollbar-thumb,
 .upload-panel::-webkit-scrollbar-thumb {
   border: 2px solid #edf4f5;
   border-radius: 999px;
   background: #9fb7bd;
+  min-height: 44px;
 }
 
 .subtitle-list {
   display: grid;
   flex: 1;
+  height: 100%;
   min-height: 0;
   align-content: start;
   overflow-y: scroll;
@@ -918,6 +920,10 @@ h2 {
   scrollbar-color: #9fb7bd #edf4f5;
   scrollbar-width: thin;
   scrollbar-gutter: stable;
+}
+
+.subtitle-list > .subtitle-empty-guide {
+  min-height: calc(100% + 140px);
 }
 
 .subtitle-empty-guide {
@@ -1056,16 +1062,27 @@ h2 {
   color: var(--color-accent-strong);
 }
 
-.insight-body {
+.insight-scroll-region {
   display: grid;
   align-content: start;
-  gap: 12px;
+  height: 100%;
   min-height: 0;
   overflow-y: scroll;
   padding-right: 2px;
   scrollbar-color: #9fb7bd #edf4f5;
   scrollbar-width: thin;
   scrollbar-gutter: stable;
+}
+
+.insight-scroll-region > .empty-state {
+  min-height: calc(100% + 140px);
+}
+
+.insight-body {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 0;
 }
 
 .insight-summary,

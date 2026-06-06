@@ -1,4 +1,5 @@
 import { mount } from "@vue/test-utils";
+import { nextTick } from "vue";
 import { describe, expect, it, vi } from "vitest";
 
 import SubtitleList from "./SubtitleList.vue";
@@ -102,23 +103,38 @@ describe("SubtitleList", () => {
   });
 
   it("scrolls the active cue into view when playback moves", async () => {
-    const scrollIntoView = vi.fn();
-    const originalScrollIntoView = Element.prototype.scrollIntoView;
-    Element.prototype.scrollIntoView = scrollIntoView;
+    const scrollTo = vi.fn();
     const wrapper = mount(SubtitleList, {
       props: {
         cues,
         activeCueIndex: 1,
       },
     });
-
-    await wrapper.setProps({ activeCueIndex: 2 });
-
-    expect(scrollIntoView).toHaveBeenCalledWith({
-      behavior: "smooth",
-      block: "nearest",
+    const subtitleList = wrapper.get<HTMLElement>('[data-testid="subtitle-list"]');
+    Object.defineProperty(subtitleList.element, "clientHeight", {
+      value: 200,
+      configurable: true,
+    });
+    Object.defineProperty(subtitleList.element, "scrollTo", {
+      value: scrollTo,
+      configurable: true,
+    });
+    const activeCue = wrapper.findAll<HTMLElement>(".subtitle-item")[1];
+    Object.defineProperty(activeCue.element, "offsetTop", {
+      value: 320,
+      configurable: true,
+    });
+    Object.defineProperty(activeCue.element, "clientHeight", {
+      value: 80,
+      configurable: true,
     });
 
-    Element.prototype.scrollIntoView = originalScrollIntoView;
+    await wrapper.setProps({ activeCueIndex: 2 });
+    await nextTick();
+
+    expect(scrollTo).toHaveBeenCalledWith({
+      top: 260,
+      behavior: "smooth",
+    });
   });
 });
