@@ -416,13 +416,27 @@ h2 {
 
 .live-subtitle-body {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   min-height: 92px;
   align-content: center;
   padding: 16px;
   border: 1px solid #d8e7dd;
   border-radius: 6px;
   background: #f4fbf6;
+}
+
+.live-subtitle-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #52606d;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.live-subtitle-meta span:first-child {
+  color: #155e66;
 }
 
 .live-subtitle-source,

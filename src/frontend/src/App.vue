@@ -18,7 +18,7 @@ import {
 } from "./api/jobEvents";
 import { getSubtitles as defaultGetSubtitles } from "./api/subtitles";
 import { isFinishedJob, type JobRead } from "./types/job";
-import type { SubtitleCue } from "./types/subtitle";
+import { formatCueTime, type SubtitleCue } from "./types/subtitle";
 
 const props = withDefaults(
   defineProps<{
@@ -272,6 +272,13 @@ onBeforeUnmount(() => {
               <h2>实时字幕</h2>
             </div>
             <div v-if="displayedLiveSubtitle" class="live-subtitle-body">
+              <div class="live-subtitle-meta" data-testid="live-subtitle-meta">
+                <span>当前 #{{ displayedLiveSubtitle.index }}</span>
+                <span>
+                  {{ formatCueTime(displayedLiveSubtitle.start) }} -
+                  {{ formatCueTime(displayedLiveSubtitle.end) }}
+                </span>
+              </div>
               <p class="live-subtitle-source">{{ displayedLiveSubtitle.source_text }}</p>
               <p
                 v-if="

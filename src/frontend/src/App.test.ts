@@ -244,6 +244,51 @@ describe("App", () => {
     expect(video.element.currentTime).toBe(0.55);
   });
 
+  it("shows metadata for the subtitle currently matched by video time", async () => {
+    vi.useFakeTimers();
+    const createdJob = buildJob();
+    const doneJob = buildJob({
+      status: "done",
+      progress: 100,
+      message: "Subtitle task completed.",
+    });
+    const wrapper = mount(App, {
+      props: {
+        createJob: vi.fn().mockResolvedValue(createdJob),
+        getJob: vi.fn().mockResolvedValue(doneJob),
+        getSubtitles: vi.fn().mockResolvedValue(timelineSubtitles),
+        createJobEventSource: vi.fn().mockReturnValue(new FakeEventSource()),
+        pollIntervalMs: 10,
+      },
+    });
+    const file = new File(["demo"], "demo.mp4", { type: "video/mp4" });
+    const fileInput = wrapper.get<HTMLInputElement>('[data-testid="video-file"]');
+
+    Object.defineProperty(fileInput.element, "files", {
+      value: [file],
+      configurable: true,
+    });
+
+    await fileInput.trigger("change");
+    await wrapper.get("form").trigger("submit");
+    await vi.runOnlyPendingTimersAsync();
+    await wrapper.vm.$nextTick();
+
+    const video = wrapper.get<HTMLVideoElement>("video");
+    Object.defineProperty(video.element, "currentTime", {
+      value: 15,
+      writable: true,
+      configurable: true,
+    });
+    await video.trigger("timeupdate");
+    await wrapper.vm.$nextTick();
+
+    const meta = wrapper.get('[data-testid="live-subtitle-meta"]').text();
+    expect(meta).toContain("当前 #2");
+    expect(meta).toContain("00:14.000");
+    expect(meta).toContain("00:18.500");
+  });
+
   it("shows an error when job creation fails", async () => {
     const createJob = vi.fn().mockRejectedValue(new Error("Upload failed."));
     const wrapper = mount(App, {
