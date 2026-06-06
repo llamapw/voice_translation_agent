@@ -17,3 +17,5 @@ def test_build_job_paths_uses_job_scoped_files(tmp_path):
     assert paths.audio_wav == tmp_path / "jobs" / "job_123" / "audio.wav"
     assert paths.subtitles_json == tmp_path / "jobs" / "job_123" / "subtitles.json"
     assert paths.output_srt == tmp_path / "jobs" / "job_123" / "output.srt"
+    assert paths.insight_json == tmp_path / "jobs" / "job_123" / "insight.json"
+    assert paths.insight_markdown == tmp_path / "jobs" / "job_123" / "insight.md"
