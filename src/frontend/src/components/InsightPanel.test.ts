@@ -22,6 +22,8 @@ const insight: InsightRead = {
       type: "term",
       title: "可补偿热应激",
       content: "身体可以及时散热的状态。",
+      source_term: "compensable heat stress",
+      target_term: "可补偿热应激",
       start: 4,
       end: 10,
       source_cue_indexes: [1],
@@ -100,6 +102,7 @@ describe("InsightPanel", () => {
 
     expect(glossary.text()).toContain("本视频术语表");
     expect(glossary.text()).toContain("1 个术语");
+    expect(glossary.text()).toContain("compensable heat stress");
     expect(glossary.text()).toContain("可补偿热应激");
     expect(glossary.text()).toContain("身体可以及时散热的状态。");
   });
@@ -115,7 +118,7 @@ describe("InsightPanel", () => {
               id: "key_point_2",
               type: "key_point",
               title: "关键概念",
-              content: "可补偿热应激表示身体仍能散热。",
+              content: "Compensable heat stress 表示身体仍能散热，也叫可补偿热应激。",
               start: 11,
               end: 12,
               source_cue_indexes: [2],
@@ -127,6 +130,9 @@ describe("InsightPanel", () => {
       },
     });
 
+    expect(wrapper.get('[data-testid="term-highlight-Compensable heat stress"]').text()).toBe(
+      "Compensable heat stress",
+    );
     expect(wrapper.get('[data-testid="term-highlight-可补偿热应激"]').text()).toBe(
       "可补偿热应激",
     );

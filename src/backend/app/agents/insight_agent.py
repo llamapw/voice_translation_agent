@@ -125,6 +125,8 @@ class LangChainInsightAgent(InsightAgent):
             '      "type": "key_point",\n'
             '      "title": "要点标题",\n'
             '      "content": "要点内容",\n'
+            '      "source_term": null,\n'
+            '      "target_term": null,\n'
             '      "start": 0.0,\n'
             '      "end": 1.0,\n'
             '      "source_cue_indexes": [1]\n'
@@ -134,7 +136,9 @@ class LangChainInsightAgent(InsightAgent):
             "可用 type: chapter, key_point, term, todo, decision。\n"
             "必须提取术语: 请从字幕中选择 3-8 个对理解视频有帮助的专有名词、"
             "核心概念、组织/产品名称或专业表达，并为每个术语输出一个 "
-            '"type": "term" 的 item。术语 title 使用术语原词，'
+            '"type": "term" 的 item。term item 必须包含 "source_term" 和 "target_term": '
+            "source_term 必须使用原文字幕中的术语原词，target_term 必须使用对应中文译名。"
+            "title 使用适合界面展示的中文术语名，"
             "content 用简体中文解释该术语在本视频中的含义，start/end 使用术语首次出现的字幕时间，"
             "source_cue_indexes 填写对应字幕编号。若字幕很短，也至少尽量输出 1 个 term。\n"
             "同时输出关键要点: 请输出覆盖主要内容的 key_point items。\n"

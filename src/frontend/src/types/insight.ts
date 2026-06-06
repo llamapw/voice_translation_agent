@@ -5,6 +5,8 @@ export interface InsightItem {
   type: InsightItemType;
   title: string;
   content: string;
+  source_term?: string | null;
+  target_term?: string | null;
   start: number;
   end: number;
   source_cue_indexes: number[];

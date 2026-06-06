@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { buildTermHighlightSegments, uniqueTermNames } from "./termHighlight";
+import type { InsightItem } from "../types/insight";
+import { buildInsightTermNames, buildTermHighlightSegments, uniqueTermNames } from "./termHighlight";
 
 describe("termHighlight", () => {
   it("builds text segments for matched terms without using html strings", () => {
@@ -21,5 +22,23 @@ describe("termHighlight", () => {
       "热应激",
       "Core Temperature",
     ]);
+  });
+
+  it("builds highlight names from bilingual term insight fields", () => {
+    const items: InsightItem[] = [
+      {
+        id: "term_1",
+        type: "term",
+        title: "热应激",
+        content: "身体热量压力相关概念。",
+        start: 0.55,
+        end: 13.51,
+        source_cue_indexes: [1],
+        source_term: "heat stress",
+        target_term: "热应激",
+      },
+    ];
+
+    expect(buildInsightTermNames(items)).toEqual(["heat stress", "热应激"]);
   });
 });

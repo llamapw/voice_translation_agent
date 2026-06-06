@@ -3,7 +3,7 @@ import { computed } from "vue";
 
 import { insightItemTypeLabel, type InsightItem, type InsightRead } from "../types/insight";
 import { formatCueTime } from "../types/subtitle";
-import { buildTermHighlightSegments, uniqueTermNames } from "../utils/termHighlight";
+import { buildInsightTermNames, buildTermHighlightSegments } from "../utils/termHighlight";
 
 const props = defineProps<{
   insight: InsightRead | null;
@@ -31,7 +31,17 @@ const groupedItems = computed(() => {
     .filter((group) => group.items.length > 0);
 });
 const termItems = computed(() => props.insight?.items.filter((item) => item.type === "term") ?? []);
-const glossaryTerms = computed(() => uniqueTermNames(termItems.value.map((item) => item.title)));
+const glossaryTerms = computed(() => buildInsightTermNames(props.insight?.items ?? []));
+
+function getTermPrimaryText(item: InsightItem): string {
+  return item.source_term?.trim() || item.title;
+}
+
+function getTermSecondaryText(item: InsightItem): string | null {
+  const secondary = item.target_term?.trim() || item.title;
+
+  return secondary && secondary !== getTermPrimaryText(item) ? secondary : null;
+}
 </script>
 
 <template>
@@ -108,7 +118,13 @@ const glossaryTerms = computed(() => uniqueTermNames(termItems.value.map((item) 
                 来源字幕: {{ item.source_cue_indexes.join(", ") }}
               </span>
             </div>
-            <strong>{{ item.title }}</strong>
+            <strong>{{ getTermPrimaryText(item) }}</strong>
+            <span
+              v-if="getTermSecondaryText(item)"
+              class="glossary-translation"
+            >
+              {{ getTermSecondaryText(item) }}
+            </span>
             <p>{{ item.content }}</p>
           </li>
         </ol>

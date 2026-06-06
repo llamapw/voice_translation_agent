@@ -1,3 +1,5 @@
+import type { InsightItem } from "../types/insight";
+
 export interface TermHighlightSegment {
   text: string;
   highlighted: boolean;
@@ -19,6 +21,14 @@ export function uniqueTermNames(terms: string[]): string[] {
   }
 
   return names;
+}
+
+export function buildInsightTermNames(items: InsightItem[]): string[] {
+  return uniqueTermNames(
+    items
+      .filter((item) => item.type === "term")
+      .flatMap((item) => [item.source_term ?? "", item.target_term ?? "", item.title]),
+  );
 }
 
 export function buildTermHighlightSegments(

@@ -56,6 +56,8 @@ const insightWithTerm: InsightRead = {
       type: "term",
       title: "热应激",
       content: "身体热量压力相关概念。",
+      source_term: "heat stress",
+      target_term: "热应激",
       start: 0.55,
       end: 13.51,
       source_cue_indexes: [1],
@@ -512,6 +514,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.get('[data-testid="video-glossary"]').text()).toContain("热应激");
+    expect(wrapper.get('[data-testid="video-glossary"]').text()).toContain("heat stress");
+    expect(wrapper.get('[data-testid="term-highlight-Heat stress"]').text()).toBe("Heat stress");
     expect(wrapper.get('[data-testid="term-highlight-热应激"]').text()).toBe("热应激");
   });
 
