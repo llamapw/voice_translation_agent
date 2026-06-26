@@ -38,7 +38,7 @@ def run_subtitle_job(
                     message="Extracting audio from video.",
                 )
             )
-        media_service.extract_audio(paths.input_video, paths.audio_wav)
+        audio_path = media_service.extract_audio(paths.input_video, paths.audio_wav)
 
         job_service.update_job(
             job_id,
@@ -73,7 +73,7 @@ def run_subtitle_job(
                 )
 
         cues = asr_service.transcribe(
-            paths.audio_wav,
+            audio_path,
             on_cue=publish_enriched_cue if event_service is not None else None,
         )
 

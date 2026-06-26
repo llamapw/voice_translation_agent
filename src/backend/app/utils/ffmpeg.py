@@ -58,6 +58,8 @@ def build_extract_audio_command(
         "16000",
         "-ac",
         "1",
+        "-f",
+        "wav",
         str(output_audio),
     ]
 

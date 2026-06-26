@@ -18,6 +18,17 @@ class FakeMediaService:
         return output_audio
 
 
+class AlternateWavMediaService:
+    def __init__(self):
+        self.calls = []
+
+    def extract_audio(self, input_video, output_audio):
+        self.calls.append((input_video, output_audio))
+        converted_audio = output_audio.with_name("streaming-input.wav")
+        converted_audio.write_bytes(b"fake wav audio")
+        return converted_audio
+
+
 class FakeASRService:
     def __init__(self):
         self.calls = []
@@ -190,6 +201,31 @@ def test_run_subtitle_job_processes_video_with_injected_services(tmp_path):
     assert paths.output_srt.exists()
     assert "Hello, world." in paths.output_srt.read_text(encoding="utf-8")
     assert "你好，世界。" in paths.output_srt.read_text(encoding="utf-8")
+
+
+def test_run_subtitle_job_passes_extracted_wav_to_asr(tmp_path):
+    job_service = JobService()
+    subtitle_service = SubtitleService()
+    media_service = AlternateWavMediaService()
+    asr_service = FakeASRService()
+    llm_service = FakeLLMService()
+    job = job_service.create_job(options=JobCreateOptions(), original_filename="input.mp4")
+    paths = build_job_paths(job.id, storage_root=tmp_path)
+    paths.input_video.parent.mkdir(parents=True, exist_ok=True)
+    paths.input_video.write_bytes(b"fake mp4 video")
+
+    run_subtitle_job(
+        job_id=job.id,
+        paths=paths,
+        job_service=job_service,
+        media_service=media_service,
+        asr_service=asr_service,
+        llm_service=llm_service,
+        subtitle_service=subtitle_service,
+    )
+
+    assert media_service.calls == [(paths.input_video, paths.audio_wav)]
+    assert asr_service.calls == [paths.audio_wav.with_name("streaming-input.wav")]
 
 
 def test_run_subtitle_job_publishes_events_for_real_worker(tmp_path):

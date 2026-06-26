@@ -41,6 +41,8 @@ def test_extract_audio_to_wav_runs_expected_ffmpeg_command(tmp_path):
                 "16000",
                 "-ac",
                 "1",
+                "-f",
+                "wav",
                 str(output_audio),
             ],
             "capture_output": True,

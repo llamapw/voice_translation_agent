@@ -31,6 +31,11 @@ class ASRService:
         audio_path: Path,
         on_cue: Optional[CueCallback] = None,
     ) -> List[SubtitleCue]:
+        if audio_path.suffix.lower() != ".wav":
+            raise ASRError(
+                "Streaming ASR input must be a WAV file, got: {0}".format(audio_path)
+            )
+
         cues = []
 
         def append_segment(segment: ASRSegment) -> None:
