@@ -345,6 +345,69 @@ describe("App", () => {
     expect(liveSubtitleText).not.toContain("Hello");
   });
 
+  it("updates realtime subtitles from streaming translation delta events", async () => {
+    const createdJob = buildJob();
+    const eventSource = new FakeEventSource();
+    const wrapper = mount(App, {
+      props: {
+        createJob: vi.fn().mockResolvedValue(createdJob),
+        getJob: vi.fn(),
+        getSubtitles: vi.fn(),
+        createJobEventSource: vi.fn().mockReturnValue(eventSource),
+      },
+    });
+    const file = new File(["demo"], "demo.mp4", { type: "video/mp4" });
+    const fileInput = wrapper.get<HTMLInputElement>('[data-testid="video-file"]');
+
+    Object.defineProperty(fileInput.element, "files", {
+      value: [file],
+      configurable: true,
+    });
+
+    await fileInput.trigger("change");
+    await wrapper.get("form").trigger("submit");
+    await wrapper.vm.$nextTick();
+
+    eventSource.emit({
+      type: "subtitle_partial",
+      job_id: "job_test",
+      data: {
+        cue: {
+          ...subtitles[0],
+          target_text: "Hello",
+          display_text: "Hello",
+        },
+      },
+    });
+    eventSource.emit({
+      type: "subtitle_translation_delta",
+      job_id: "job_test",
+      data: {
+        cue_index: 1,
+        delta: "你",
+        text: "你",
+      },
+    });
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.get('[data-testid="live-subtitle"]').text()).toContain("你");
+    expect(wrapper.text()).toContain("你");
+
+    eventSource.emit({
+      type: "subtitle_translation_delta",
+      job_id: "job_test",
+      data: {
+        cue_index: 1,
+        delta: "好",
+        text: "你好",
+      },
+    });
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.get('[data-testid="live-subtitle"]').text()).toContain("你好");
+    expect(wrapper.text()).toContain("你好");
+  });
+
   it("loads subtitles when SSE completes without subtitle events", async () => {
     const createdJob = buildJob();
     const createJob = vi.fn().mockResolvedValue(createdJob);

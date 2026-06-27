@@ -114,3 +114,52 @@ def test_enrich_subtitles_calls_callback_for_each_enriched_cue():
 
     assert emitted == result
     assert [cue.index for cue in emitted] == [1, 2]
+
+
+def test_stream_enriched_subtitle_translation_emits_deltas():
+    prompts = []
+    emitted = []
+
+    def fake_completion(prompt, model):
+        prompts.append((prompt, model))
+        return "Hello."
+
+    def fake_stream(prompt, model):
+        prompts.append((prompt, model))
+        yield "你"
+        yield "好"
+        yield "。"
+
+    service = LLMService(
+        model="stream-llm",
+        text_generator=fake_completion,
+        stream_text_generator=fake_stream,
+    )
+    cue = SubtitleCue(
+        index=1,
+        start=0.0,
+        end=1.0,
+        source_text="helo",
+        target_text="helo",
+    )
+
+    result = service.stream_enriched_subtitle(
+        cue,
+        correct=True,
+        source_language="en",
+        target_language="zh",
+        subtitle_mode="bilingual",
+        on_delta=emitted.append,
+    )
+
+    assert result == SubtitleCue(
+        index=1,
+        start=0.0,
+        end=1.0,
+        source_text="Hello.",
+        target_text="你好。",
+    )
+    assert emitted == ["你", "好", "。"]
+    assert prompts[0][1] == "stream-llm"
+    assert "请纠正以下字幕文本" in prompts[0][0]
+    assert "请处理以下字幕文本" in prompts[1][0]

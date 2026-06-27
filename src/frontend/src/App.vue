@@ -157,6 +157,25 @@ function appendSubtitle(cue: SubtitleCue): void {
   subtitles.value = [...subtitles.value, cue].sort((left, right) => left.index - right.index);
 }
 
+function applySubtitleTranslationDelta(cueIndex: number, translatedText: string): void {
+  const existingIndex = subtitles.value.findIndex((item) => item.index === cueIndex);
+  if (existingIndex < 0) {
+    return;
+  }
+
+  const existingCue = subtitles.value[existingIndex];
+  const updatedCue = {
+    ...existingCue,
+    target_text: translatedText,
+    display_text: `${existingCue.source_text}\n${translatedText}`,
+  };
+  subtitles.value.splice(existingIndex, 1, updatedCue);
+
+  if (liveSubtitle.value?.index === cueIndex) {
+    liveSubtitle.value = updatedCue;
+  }
+}
+
 function handleVideoTimeUpdate(currentTime: number): void {
   videoCurrentTime.value = currentTime;
 }
@@ -192,6 +211,15 @@ async function handleGenerateInsight(): Promise<void> {
 async function applyJobEvent(event: JobEvent): Promise<void> {
   if (event.type === "subtitle_partial" && event.data.cue) {
     appendSubtitle(event.data.cue);
+    return;
+  }
+
+  if (
+    event.type === "subtitle_translation_delta" &&
+    event.data.cue_index !== undefined &&
+    event.data.text !== undefined
+  ) {
+    applySubtitleTranslationDelta(event.data.cue_index, event.data.text);
     return;
   }
 
@@ -256,6 +284,7 @@ function startEventStream(jobId: string): void {
   for (const eventName of [
     "job_status",
     "subtitle_partial",
+    "subtitle_translation_delta",
     "job_done",
     "job_failed",
     "job_closed",

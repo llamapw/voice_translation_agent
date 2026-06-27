@@ -1,4 +1,4 @@
-from typing import Callable, List, Optional
+from typing import Callable, Iterator, List, Optional
 
 from app.core.config import settings
 from app.models.job import SubtitleMode
@@ -6,7 +6,9 @@ from app.models.subtitle import SubtitleCue
 
 
 TextGenerator = Callable[[str, str], str]
+StreamTextGenerator = Callable[[str, str], Iterator[str]]
 CueCallback = Callable[[SubtitleCue], None]
+DeltaCallback = Callable[[str], None]
 
 
 class LLMError(RuntimeError):
@@ -29,9 +31,11 @@ class LLMService:
         self,
         model: str = settings.llm_model,
         text_generator: Optional[TextGenerator] = None,
+        stream_text_generator: Optional[StreamTextGenerator] = None,
     ) -> None:
         self._model = model
         self._text_generator = text_generator or generate_text_with_openai
+        self._stream_text_generator = stream_text_generator or stream_text_with_openai
 
     def enrich_subtitles(
         self,
@@ -73,6 +77,45 @@ class LLMService:
                 on_cue(enriched_cue)
 
         return enriched
+
+    def stream_enriched_subtitle(
+        self,
+        cue: SubtitleCue,
+        correct: bool,
+        source_language: str,
+        target_language: str,
+        subtitle_mode: SubtitleMode,
+        on_delta: Optional[DeltaCallback] = None,
+    ) -> SubtitleCue:
+        source_text = cue.source_text
+        target_text = cue.target_text
+
+        if correct:
+            source_text = self._text_generator(
+                build_correction_prompt(cue.source_text, source_language),
+                self._model,
+            )
+
+        if subtitle_mode in ("target", "bilingual") and target_language:
+            chunks = []
+            for delta in self._stream_text_generator(
+                build_translation_prompt(cue.source_text, target_language),
+                self._model,
+            ):
+                chunks.append(delta)
+                if on_delta is not None:
+                    on_delta(delta)
+            target_text = "".join(chunks).strip()
+        elif subtitle_mode == "source":
+            target_text = source_text
+
+        return SubtitleCue(
+            index=cue.index,
+            start=cue.start,
+            end=cue.end,
+            source_text=source_text,
+            target_text=target_text,
+        )
 
 
 def build_correction_prompt(text: str, source_language: str = "") -> str:
@@ -116,6 +159,29 @@ def generate_text_with_openai(prompt: str, model: str) -> str:
     if not content:
         raise LLMError("LLM returned empty content.")
     return content.strip()
+
+
+def stream_text_with_openai(prompt: str, model: str) -> Iterator[str]:
+    if not settings.llm_api_key:
+        raise LLMError("Missing LLM_API_KEY.")
+
+    try:
+        from openai import OpenAI
+    except ImportError as error:
+        raise LLMError("Missing openai dependency.") from error
+
+    client = OpenAI(base_url=settings.llm_base_url, api_key=settings.llm_api_key)
+    stream = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        stream=True,
+        max_tokens=1024,
+        temperature=0,
+    )
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            yield delta
 
 
 llm_service = LLMService()

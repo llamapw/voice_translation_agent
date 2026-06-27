@@ -78,6 +78,38 @@ def run_subtitle_job(
             translation_executor = ThreadPoolExecutor(max_workers=2)
 
         def enrich_and_publish_cue(cue: SubtitleCue) -> Optional[SubtitleCue]:
+            if hasattr(llm_service, "stream_enriched_subtitle"):
+                translated_text = ""
+
+                def publish_translation_delta(delta: str) -> None:
+                    nonlocal translated_text
+                    translated_text += delta
+                    if event_service is not None:
+                        event_service.publish(
+                            JobEvent.subtitle_translation_delta(
+                                job_id=job_id,
+                                cue_index=cue.index,
+                                delta=delta,
+                                text=translated_text,
+                            )
+                        )
+
+                enriched_cue = llm_service.stream_enriched_subtitle(
+                    cue,
+                    correct=correct,
+                    source_language=source_language,
+                    target_language=target_language,
+                    subtitle_mode=subtitle_mode,
+                    on_delta=publish_translation_delta,
+                )
+                with translation_lock:
+                    realtime_enriched_cues[enriched_cue.index] = enriched_cue
+                if event_service is not None:
+                    event_service.publish(
+                        JobEvent.subtitle_partial(job_id=job_id, cue=enriched_cue)
+                    )
+                return enriched_cue
+
             enriched = llm_service.enrich_subtitles(
                 [cue],
                 correct=correct,

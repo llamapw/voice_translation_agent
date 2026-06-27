@@ -32,4 +32,23 @@ describe("jobEvents api", () => {
     expect(event.type).toBe("subtitle_partial");
     expect(event.data.cue?.target_text).toBe("你好");
   });
+
+  it("parses subtitle translation delta payload", () => {
+    const event: JobEvent = parseJobEvent(
+      JSON.stringify({
+        type: "subtitle_translation_delta",
+        job_id: "job_test",
+        data: {
+          cue_index: 1,
+          delta: "你",
+          text: "你",
+        },
+      }),
+    );
+
+    expect(event.type).toBe("subtitle_translation_delta");
+    expect(event.data.cue_index).toBe(1);
+    expect(event.data.delta).toBe("你");
+    expect(event.data.text).toBe("你");
+  });
 });
