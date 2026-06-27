@@ -33,3 +33,24 @@ def test_extract_audio_calls_configured_audio_extractor(tmp_path):
     assert result == output_audio
     assert output_audio.read_bytes() == b"fake audio"
     assert calls == [(input_video, output_audio, "custom-ffmpeg")]
+
+
+def test_stream_audio_calls_configured_audio_streamer(tmp_path):
+    input_video = tmp_path / "jobs" / "job_001" / "input.mp4"
+    output_audio = tmp_path / "jobs" / "job_001" / "audio.wav"
+    calls = []
+
+    def fake_stream_audio(input_path, ffmpeg_binary):
+        calls.append((input_path, ffmpeg_binary))
+        return iter([b"wav-header", b"wav-audio"])
+
+    service = MediaService(
+        ffmpeg_binary="custom-ffmpeg",
+        audio_streamer=fake_stream_audio,
+    )
+
+    result = list(service.stream_audio(input_video, output_audio))
+
+    assert result == [b"wav-header", b"wav-audio"]
+    assert output_audio.parent.exists()
+    assert calls == [(input_video, "custom-ffmpeg")]

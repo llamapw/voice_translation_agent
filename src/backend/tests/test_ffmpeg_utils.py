@@ -3,7 +3,12 @@ import subprocess
 import pytest
 
 from app.utils import ffmpeg
-from app.utils.ffmpeg import FFmpegError, extract_audio_to_wav, resolve_ffmpeg_binary
+from app.utils.ffmpeg import (
+    FFmpegError,
+    extract_audio_to_wav,
+    resolve_ffmpeg_binary,
+    stream_audio_to_wav,
+)
 
 
 def test_extract_audio_to_wav_runs_expected_ffmpeg_command(tmp_path):
@@ -41,6 +46,8 @@ def test_extract_audio_to_wav_runs_expected_ffmpeg_command(tmp_path):
                 "16000",
                 "-ac",
                 "1",
+                "-f",
+                "wav",
                 str(output_audio),
             ],
             "capture_output": True,
@@ -64,6 +71,97 @@ def test_extract_audio_to_wav_raises_error_when_ffmpeg_fails(tmp_path):
 
     with pytest.raises(FFmpegError) as error:
         extract_audio_to_wav(input_video, output_audio, runner=fake_run)
+
+    assert "ffmpeg failed" in str(error.value)
+
+
+def test_stream_audio_to_wav_runs_ffmpeg_pipe_command_and_yields_chunks(tmp_path):
+    input_video = tmp_path / "input.mp4"
+    input_video.write_bytes(b"fake video")
+    calls = []
+
+    class FakeStdout:
+        def __init__(self):
+            self.chunks = [b"wav-header", b"wav-audio", b""]
+
+        def read(self, chunk_size):
+            return self.chunks.pop(0)
+
+    class FakeStderr:
+        def read(self):
+            return b""
+
+    class FakeProcess:
+        def __init__(self):
+            self.stdout = FakeStdout()
+            self.stderr = FakeStderr()
+
+        def wait(self):
+            return 0
+
+    def fake_popen(command, stdout, stderr, bufsize):
+        calls.append(
+            {
+                "command": command,
+                "stdout": stdout,
+                "stderr": stderr,
+                "bufsize": bufsize,
+            }
+        )
+        return FakeProcess()
+
+    chunks = list(stream_audio_to_wav(input_video, popen_factory=fake_popen))
+
+    assert chunks == [b"wav-header", b"wav-audio"]
+    assert calls == [
+        {
+            "command": [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(input_video),
+                "-vn",
+                "-acodec",
+                "pcm_s16le",
+                "-ar",
+                "16000",
+                "-ac",
+                "1",
+                "-f",
+                "wav",
+                "pipe:1",
+            ],
+            "stdout": subprocess.PIPE,
+            "stderr": subprocess.PIPE,
+            "bufsize": 0,
+        }
+    ]
+
+
+def test_stream_audio_to_wav_raises_error_when_ffmpeg_fails(tmp_path):
+    input_video = tmp_path / "input.mp4"
+    input_video.write_bytes(b"fake video")
+
+    class FakeStdout:
+        def read(self, chunk_size):
+            return b""
+
+    class FakeStderr:
+        def read(self):
+            return b"ffmpeg failed"
+
+    class FakeProcess:
+        stdout = FakeStdout()
+        stderr = FakeStderr()
+
+        def wait(self):
+            return 1
+
+    def fake_popen(command, stdout, stderr, bufsize):
+        return FakeProcess()
+
+    with pytest.raises(FFmpegError) as error:
+        list(stream_audio_to_wav(input_video, popen_factory=fake_popen))
 
     assert "ffmpeg failed" in str(error.value)
 

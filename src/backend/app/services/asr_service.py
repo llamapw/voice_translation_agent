@@ -1,7 +1,7 @@
 import time
 from inspect import signature
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, Iterable, List, Optional
 
 from app.core.config import settings
 from app.models.subtitle import SubtitleCue
@@ -10,6 +10,7 @@ from app.models.subtitle import SubtitleCue
 ASRSegment = Dict[str, object]
 SegmentCallback = Callable[[ASRSegment], None]
 Recognizer = Callable[..., List[ASRSegment]]
+StreamRecognizer = Callable[..., List[ASRSegment]]
 CueCallback = Callable[[SubtitleCue], None]
 
 
@@ -22,15 +23,38 @@ class ASRService:
         self,
         model: str = settings.asr_model,
         recognizer: Optional[Recognizer] = None,
+        stream_recognizer: Optional[StreamRecognizer] = None,
     ) -> None:
         self._model = model
         self._recognizer = recognizer or recognize_audio_with_fun_asr
+        self._stream_recognizer = stream_recognizer or recognize_wav_stream_with_fun_asr
 
     def transcribe(
         self,
         audio_path: Path,
         on_cue: Optional[CueCallback] = None,
     ) -> List[SubtitleCue]:
+        if audio_path.suffix.lower() != ".wav":
+            raise ASRError(
+                "Streaming ASR input must be a WAV file, got: {0}".format(audio_path)
+            )
+
+        return self._transcribe_segments(audio_path, on_cue)
+
+    def transcribe_wav_stream(
+        self,
+        audio_chunks: Iterable[bytes],
+        on_cue: Optional[CueCallback] = None,
+    ) -> List[SubtitleCue]:
+        return self._transcribe_segments(audio_chunks, on_cue, recognizer=self._stream_recognizer)
+
+    def _transcribe_segments(
+        self,
+        audio_input,
+        on_cue: Optional[CueCallback] = None,
+        recognizer: Optional[Recognizer] = None,
+    ) -> List[SubtitleCue]:
+        selected_recognizer = recognizer or self._recognizer
         cues = []
 
         def append_segment(segment: ASRSegment) -> None:
@@ -61,10 +85,10 @@ class ASRService:
             else:
                 cues[existing_index] = cue
 
-        if _supports_streaming_callback(self._recognizer):
-            segments = self._recognizer(audio_path, self._model, append_segment)
+        if _supports_streaming_callback(selected_recognizer):
+            segments = selected_recognizer(audio_input, self._model, append_segment)
         else:
-            segments = self._recognizer(audio_path, self._model)
+            segments = selected_recognizer(audio_input, self._model)
 
         streamed_count = len(cues)
         for segment in segments[streamed_count:]:
@@ -88,6 +112,29 @@ def _supports_streaming_callback(recognizer: Recognizer) -> bool:
 
 def recognize_audio_with_fun_asr(
     audio_path: Path,
+    model: str,
+    on_segment: Optional[SegmentCallback] = None,
+) -> List[ASRSegment]:
+    file_buffer = audio_path.read_bytes()
+    if not file_buffer:
+        raise ASRError("Audio file is empty: {0}".format(audio_path))
+
+    return recognize_wav_stream_with_fun_asr(
+        _iter_audio_chunks(file_buffer),
+        model,
+        on_segment,
+    )
+
+
+def _iter_audio_chunks(file_buffer: bytes, chunk_size: int = 3200) -> Iterable[bytes]:
+    offset = 0
+    while offset < len(file_buffer):
+        yield file_buffer[offset : offset + chunk_size]
+        offset += chunk_size
+
+
+def recognize_wav_stream_with_fun_asr(
+    audio_chunks: Iterable[bytes],
     model: str,
     on_segment: Optional[SegmentCallback] = None,
 ) -> List[ASRSegment]:
@@ -143,32 +190,31 @@ def recognize_audio_with_fun_asr(
                 self.last_end_ms = end_ms
                 self.segments.append(segment)
 
-    file_buffer = audio_path.read_bytes()
-    if not file_buffer:
-        raise ASRError("Audio file is empty: {0}".format(audio_path))
-
     callback = SubtitleRecognitionCallback()
     recognition = Recognition(
         model=model,
-        format=audio_path.suffix.lower().lstrip("."),
+        format="wav",
         sample_rate=16000,
         callback=callback,
     )
     recognition.start()
 
-    offset = 0
-    chunk_size = 3200
-    while offset < len(file_buffer) and not callback.error_message:
-        audio_data = file_buffer[offset : offset + chunk_size]
+    sent_any_audio = False
+    for audio_data in audio_chunks:
+        if not audio_data:
+            continue
+        sent_any_audio = True
         try:
             recognition.send_audio_frame(audio_data)
         except Exception as error:
             callback.error_message = str(error)
             break
-        offset += chunk_size
         time.sleep(0.1)
 
     recognition.stop()
+
+    if not sent_any_audio:
+        raise ASRError("Audio stream is empty.")
 
     if callback.error_message:
         raise ASRError(callback.error_message)

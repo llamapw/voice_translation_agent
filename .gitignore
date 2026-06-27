@@ -6,6 +6,15 @@
 #资源文件
 Test/resources/
 
+# Python 缓存和测试产物
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
 # 编译后的Python文件
 Test/__pycache__/
 
@@ -13,9 +22,11 @@ Test/__pycache__/
 AGENTS.md
 
 # 不上传运行时任务产物
-src/storage/jobs/
+src/storage/jobs/*
+!src/storage/jobs/.gitkeep
 
 # 前端依赖和构建产物
 node_modules/
 dist/
-
+.vite/
+coverage/

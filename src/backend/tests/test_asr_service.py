@@ -1,5 +1,5 @@
 from app.models.subtitle import SubtitleCue
-from app.services.asr_service import ASRService
+from app.services.asr_service import ASRError, ASRService
 
 
 def test_transcribe_converts_recognizer_segments_to_subtitle_cues(tmp_path):
@@ -137,3 +137,41 @@ def test_transcribe_streams_interim_segments_without_returning_them(tmp_path):
         "First sentence.",
         "Second sentence.",
     ]
+
+
+def test_transcribe_rejects_non_wav_audio_for_streaming_input(tmp_path):
+    audio_path = tmp_path / "audio.mp4"
+    audio_path.write_bytes(b"fake mp4 audio")
+
+    def fake_recognizer(path, model):
+        return []
+
+    service = ASRService(model="custom-asr", recognizer=fake_recognizer)
+
+    try:
+        service.transcribe(audio_path)
+    except ASRError as error:
+        assert "WAV" in str(error)
+    else:
+        raise AssertionError("Expected non-WAV audio to be rejected")
+
+
+def test_transcribe_wav_stream_publishes_cues_from_streaming_bytes():
+    chunks = [b"wav-header", b"wav-audio"]
+    streamed_cues = []
+    calls = []
+
+    def fake_stream_recognizer(audio_chunks, model, on_segment=None):
+        consumed_chunks = list(audio_chunks)
+        calls.append((consumed_chunks, model))
+        if on_segment is not None:
+            on_segment({"start": 0.0, "end": 1.25, "text": "First sentence."})
+        return []
+
+    service = ASRService(model="custom-asr", stream_recognizer=fake_stream_recognizer)
+
+    result = service.transcribe_wav_stream(iter(chunks), on_cue=streamed_cues.append)
+
+    assert calls == [(chunks, "custom-asr")]
+    assert result == streamed_cues
+    assert streamed_cues[0].source_text == "First sentence."
