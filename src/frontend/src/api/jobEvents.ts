@@ -4,6 +4,7 @@ import type { SubtitleCue } from "../types/subtitle";
 export type JobEventType =
   | "job_status"
   | "subtitle_partial"
+  | "subtitle_translation_delta"
   | "job_done"
   | "job_failed"
   | "job_closed";
@@ -16,6 +17,9 @@ export interface JobEvent {
     progress?: number;
     message?: string;
     cue?: SubtitleCue;
+    cue_index?: number;
+    delta?: string;
+    text?: string;
     error?: string;
   };
 }

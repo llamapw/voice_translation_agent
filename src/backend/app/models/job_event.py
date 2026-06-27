@@ -9,6 +9,7 @@ from app.models.subtitle import SubtitleCue
 class JobEventType(str, Enum):
     job_status = "job_status"
     subtitle_partial = "subtitle_partial"
+    subtitle_translation_delta = "subtitle_translation_delta"
     job_done = "job_done"
     job_failed = "job_failed"
     job_closed = "job_closed"
@@ -43,6 +44,24 @@ class JobEvent(BaseModel):
             type=JobEventType.subtitle_partial,
             job_id=job_id,
             data={"cue": cue.model_dump()},
+        )
+
+    @classmethod
+    def subtitle_translation_delta(
+        cls,
+        job_id: str,
+        cue_index: int,
+        delta: str,
+        text: str,
+    ) -> "JobEvent":
+        return cls(
+            type=JobEventType.subtitle_translation_delta,
+            job_id=job_id,
+            data={
+                "cue_index": cue_index,
+                "delta": delta,
+                "text": text,
+            },
         )
 
     @classmethod

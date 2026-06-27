@@ -32,3 +32,19 @@ def test_job_event_serializes_subtitle_payload():
 
     assert event.type == JobEventType.subtitle_partial
     assert event.data["cue"]["source_text"] == "Hello"
+
+
+def test_job_event_serializes_subtitle_translation_delta_payload():
+    event = JobEvent.subtitle_translation_delta(
+        job_id="job_test",
+        cue_index=1,
+        delta="你",
+        text="你",
+    )
+
+    assert event.type == JobEventType.subtitle_translation_delta
+    assert event.data == {
+        "cue_index": 1,
+        "delta": "你",
+        "text": "你",
+    }

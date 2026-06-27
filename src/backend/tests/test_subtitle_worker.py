@@ -133,6 +133,53 @@ class FakeLLMService:
         return enriched
 
 
+class StreamingLLMService:
+    def __init__(self):
+        self.calls = []
+
+    def enrich_subtitles(
+        self,
+        cues,
+        correct,
+        source_language,
+        target_language,
+        subtitle_mode,
+        on_cue=None,
+    ):
+        self.calls.append(("batch", cues, correct, source_language, target_language, subtitle_mode))
+        return [
+            SubtitleCue(
+                index=cue.index,
+                start=cue.start,
+                end=cue.end,
+                source_text="Hello, world.",
+                target_text="你好，世界。",
+            )
+            for cue in cues
+        ]
+
+    def stream_enriched_subtitle(
+        self,
+        cue,
+        correct,
+        source_language,
+        target_language,
+        subtitle_mode,
+        on_delta=None,
+    ):
+        self.calls.append(("stream", cue, correct, source_language, target_language, subtitle_mode))
+        for delta in ["你", "好", "。"]:
+            if on_delta is not None:
+                on_delta(delta)
+        return SubtitleCue(
+            index=cue.index,
+            start=cue.start,
+            end=cue.end,
+            source_text="Hello, world.",
+            target_text="你好。",
+        )
+
+
 class FailingMediaService:
     def extract_audio(self, input_video, output_audio):
         raise RuntimeError("ffmpeg failed")
@@ -574,6 +621,58 @@ def test_run_subtitle_job_does_not_block_asr_callback_on_translation(tmp_path):
 
     assert not worker_thread.is_alive()
     assert result["job"].status == JobStatus.done
+
+
+def test_run_subtitle_job_streams_translation_deltas_to_events(tmp_path):
+    job_service = JobService()
+    subtitle_service = SubtitleService()
+    media_service = FakeMediaService()
+    asr_service = FakeASRService()
+    llm_service = StreamingLLMService()
+    event_service = JobEventService()
+    job = job_service.create_job(
+        options=JobCreateOptions(
+            target_language="zh",
+            correct=True,
+            subtitle_mode="bilingual",
+        ),
+        original_filename="input.mp4",
+    )
+    paths = build_job_paths(job.id, storage_root=tmp_path)
+    paths.input_video.parent.mkdir(parents=True, exist_ok=True)
+    paths.input_video.write_bytes(b"fake video")
+
+    run_subtitle_job(
+        job_id=job.id,
+        paths=paths,
+        job_service=job_service,
+        media_service=media_service,
+        asr_service=asr_service,
+        llm_service=llm_service,
+        subtitle_service=subtitle_service,
+        event_service=event_service,
+    )
+
+    events = []
+    while True:
+        event = event_service.next_event(job.id, timeout=0.01)
+        if event is None:
+            break
+        events.append(event)
+        if event.type == JobEventType.job_closed:
+            break
+
+    translation_delta_events = [
+        event for event in events if event.type == JobEventType.subtitle_translation_delta
+    ]
+    subtitle_events = [
+        event for event in events if event.type == JobEventType.subtitle_partial
+    ]
+
+    assert [event.data["delta"] for event in translation_delta_events] == ["你", "好", "。"]
+    assert [event.data["text"] for event in translation_delta_events] == ["你", "你好", "你好。"]
+    assert subtitle_events[-1].data["cue"]["target_text"] == "你好。"
+    assert llm_service.calls[0][0] == "stream"
 
 
 def test_run_subtitle_job_passes_streaming_callback_to_asr(tmp_path):
