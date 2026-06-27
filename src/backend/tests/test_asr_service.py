@@ -154,3 +154,24 @@ def test_transcribe_rejects_non_wav_audio_for_streaming_input(tmp_path):
         assert "WAV" in str(error)
     else:
         raise AssertionError("Expected non-WAV audio to be rejected")
+
+
+def test_transcribe_wav_stream_publishes_cues_from_streaming_bytes():
+    chunks = [b"wav-header", b"wav-audio"]
+    streamed_cues = []
+    calls = []
+
+    def fake_stream_recognizer(audio_chunks, model, on_segment=None):
+        consumed_chunks = list(audio_chunks)
+        calls.append((consumed_chunks, model))
+        if on_segment is not None:
+            on_segment({"start": 0.0, "end": 1.25, "text": "First sentence."})
+        return []
+
+    service = ASRService(model="custom-asr", stream_recognizer=fake_stream_recognizer)
+
+    result = service.transcribe_wav_stream(iter(chunks), on_cue=streamed_cues.append)
+
+    assert calls == [(chunks, "custom-asr")]
+    assert result == streamed_cues
+    assert streamed_cues[0].source_text == "First sentence."

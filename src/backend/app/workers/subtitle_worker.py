@@ -38,7 +38,15 @@ def run_subtitle_job(
                     message="Extracting audio from video.",
                 )
             )
-        audio_path = media_service.extract_audio(paths.input_video, paths.audio_wav)
+        use_audio_stream = hasattr(media_service, "stream_audio") and hasattr(
+            asr_service,
+            "transcribe_wav_stream",
+        )
+        audio_input = (
+            media_service.stream_audio(paths.input_video, paths.audio_wav)
+            if use_audio_stream
+            else media_service.extract_audio(paths.input_video, paths.audio_wav)
+        )
 
         job_service.update_job(
             job_id,
@@ -60,6 +68,7 @@ def run_subtitle_job(
         def publish_enriched_cue(cue: SubtitleCue) -> None:
             if event_service is None:
                 return
+            event_service.publish(JobEvent.subtitle_partial(job_id=job_id, cue=cue))
             enriched = llm_service.enrich_subtitles(
                 [cue],
                 correct=job.correct,
@@ -72,10 +81,16 @@ def run_subtitle_job(
                     JobEvent.subtitle_partial(job_id=job_id, cue=enriched[0])
                 )
 
-        cues = asr_service.transcribe(
-            audio_path,
-            on_cue=publish_enriched_cue if event_service is not None else None,
-        )
+        if use_audio_stream:
+            cues = asr_service.transcribe_wav_stream(
+                audio_input,
+                on_cue=publish_enriched_cue if event_service is not None else None,
+            )
+        else:
+            cues = asr_service.transcribe(
+                audio_input,
+                on_cue=publish_enriched_cue if event_service is not None else None,
+            )
 
         job = job_service.update_job(
             job_id,
