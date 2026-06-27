@@ -1,3 +1,5 @@
+from threading import Event, Thread
+
 from app.core.paths import build_job_paths
 from app.models.job import JobCreateOptions, JobStatus
 from app.models.job_event import JobEventType
@@ -488,6 +490,90 @@ def test_run_subtitle_job_streams_translated_cues_during_asr(tmp_path):
     assert subtitle_events[0].data["cue"]["target_text"] == "helo world"
     assert subtitle_events[1].data["cue"]["source_text"] == "Hello, world."
     assert subtitle_events[1].data["cue"]["target_text"] == "你好，世界。"
+
+
+def test_run_subtitle_job_does_not_block_asr_callback_on_translation(tmp_path):
+    translation_started = Event()
+    translation_release = Event()
+    callback_returned = Event()
+
+    raw_cue = SubtitleCue(
+        index=1,
+        start=0.0,
+        end=2.0,
+        source_text="helo world",
+        target_text="helo world",
+    )
+    translated_cue = SubtitleCue(
+        index=1,
+        start=0.0,
+        end=2.0,
+        source_text="Hello, world.",
+        target_text="你好，世界。",
+    )
+
+    class CallbackTimingASRService:
+        def transcribe(self, audio_path, on_cue=None):
+            if on_cue is not None:
+                on_cue(raw_cue)
+            callback_returned.set()
+            return [raw_cue]
+
+    class BlockingLLMService:
+        def enrich_subtitles(
+            self,
+            cues,
+            correct,
+            source_language,
+            target_language,
+            subtitle_mode,
+            on_cue=None,
+        ):
+            translation_started.set()
+            if not translation_release.wait(timeout=2):
+                raise TimeoutError("translation was not released")
+            return [translated_cue]
+
+    job_service = JobService()
+    subtitle_service = SubtitleService()
+    event_service = JobEventService()
+    job = job_service.create_job(
+        options=JobCreateOptions(
+            target_language="zh",
+            correct=True,
+            subtitle_mode="bilingual",
+        ),
+        original_filename="input.mp4",
+    )
+    paths = build_job_paths(job.id, storage_root=tmp_path)
+    paths.input_video.parent.mkdir(parents=True, exist_ok=True)
+    paths.input_video.write_bytes(b"fake video")
+    result = {}
+
+    def run_worker():
+        result["job"] = run_subtitle_job(
+            job_id=job.id,
+            paths=paths,
+            job_service=job_service,
+            media_service=FakeMediaService(),
+            asr_service=CallbackTimingASRService(),
+            llm_service=BlockingLLMService(),
+            subtitle_service=subtitle_service,
+            event_service=event_service,
+        )
+
+    worker_thread = Thread(target=run_worker)
+    worker_thread.start()
+
+    try:
+        assert translation_started.wait(timeout=1)
+        assert callback_returned.wait(timeout=0.1)
+    finally:
+        translation_release.set()
+        worker_thread.join(timeout=2)
+
+    assert not worker_thread.is_alive()
+    assert result["job"].status == JobStatus.done
 
 
 def test_run_subtitle_job_passes_streaming_callback_to_asr(tmp_path):
